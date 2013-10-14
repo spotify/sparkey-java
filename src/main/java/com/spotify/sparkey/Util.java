@@ -147,31 +147,6 @@ final class Util {
     output.write(value);
   }
 
-  static int writeUnsignedVLQ(int value, byte[] buffer, int offset) {
-    while (value >= 1 << 7) {
-      buffer[offset++] = (byte) (value & 0x7f | 0x80);
-      value >>>= 7;
-    }
-    buffer[offset++] = (byte) value;
-    return offset;
-  }
-
-  /*
-  public static long readUnsignedVLQ(RandomAccessData input) throws IOException {
-      int shift = 0;
-      long value = 0;
-      while (true) {
-          int b = input.readUnsignedByte();
-          int b2 = b & 0x7f;
-          if (b2 == b) {
-              return value | (long) b << shift;
-          }
-          value |= (long) b2 << shift;
-          shift += 7;
-      }
-  }
-  */
-
   static int readUnsignedVLQInt(BlockRandomInput input) {
     int b = input.readUnsignedByte();
     int b2 = b & 0x7f;
@@ -254,25 +229,6 @@ final class Util {
     return read;
   }
 
-  /*
-  static long readUnsignedVLQ(InputStream input) throws IOException {
-      int shift = 0;
-      long value = 0;
-      while (true) {
-          int b = input.read();
-          if (b == -1) {
-              throw new EOFException();
-          }
-          int b2 = b & 0x7f;
-          if (b2 == b) {
-              return value | (long) b << shift;
-          }
-          value |= (long) b2 << shift;
-          shift += 7;
-      }
-  }
-  */
-
   static void copy(long len, InputStream inputStream, OutputStream outputStream, byte[] buf) throws IOException {
     long full = len / buf.length;
     while (full > 0) {
@@ -296,15 +252,6 @@ final class Util {
       pos += read;
       remaining -= read;
     }
-  }
-
-  private static boolean equals(byte[] key, int off, int len, byte[] buf) {
-    for (int i = len - 1; i >= 0; i--) {
-      if (key[off + i] != buf[i]) {
-        return false;
-      }
-    }
-    return true;
   }
 
   static boolean equals(int len, byte[] a, byte[] b) {
