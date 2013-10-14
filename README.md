@@ -17,7 +17,8 @@ Running the benchmark test
 
 Usage
 -----
-Sparkey is meant to be used as a library embedded in other software. Take a look at the API documentation which gives examples on how to use it.
+Sparkey is meant to be used as a library embedded in other software.
+Take a look at the [API documentation](http://spotify.github.io/sparkey-java/apidocs/2.0.0-SNAPSHOT/) which gives examples on how to use it.
 
 License
 -------
