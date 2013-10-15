@@ -7,9 +7,17 @@
   <groupId>com.spotify.sparkey</groupId>
   <artifactId>sparkey</artifactId>
   <version>2.0.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
 
   <scm>
     <connection>scm:git:https://github.com/spotify/sparkey-java.git</connection>
+    <developerConnection>scm:git:https://github.com/spotify/sparkey-java.git</developerConnection>
     <url>scm:https://github.com/spotify/sparkey-java/</url>
   </scm>
 
@@ -26,6 +34,20 @@
     <name>Spotify AB</name>
     <url>http://www.spotify.com</url>
   </organization>
+
+  <developers>
+    <developer>
+      <id>krka</id>
+      <name>Kristofer Karlsson</name>
+      <email>krka@spotify.com</email>
+      <organization>Spotify AB</organization>
+      <organizationUrl>http://www.spotify.com</organizationUrl>
+      <roles>
+        <role>developer</role>
+      </roles>
+      <timezone>+1</timezone>
+    </developer>
+  </developers>
 
   <build>
     <plugins>
