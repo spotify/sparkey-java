@@ -1,22 +1,21 @@
 This is the java version of sparkey. It's not a binding, but a full reimplementation.
 See [Sparkey](http://github.com/spotify/sparkey) for more documentation on how it works.
 
-Dependencies
-------------
+### Dependencies
 
 * Java 6 or higher
 * Maven
 
-Building
---------
+### Building
+
     mvn package
 
-Running the benchmark test
---------------------------
+### Running the benchmark test
+
     mvn exec:java -Dexec.mainClass="com.spotify.sparkey.system.Benchmark" -Dexec.classpathScope="test"
 
-Usage
------
+### Usage
+
 Sparkey is meant to be used as a library embedded in other software.
 
 To import it with maven, use this:
@@ -31,12 +30,12 @@ To help get started, take a look at the
 [API documentation](http://spotify.github.io/sparkey-java/apidocs/2.0.0-SNAPSHOT/)
 or an example usage: [SparkeyExample](src/test/java/com/spotify/sparkey/system/SparkeyExample.java)
 
-License
--------
+### License
+
 Apache License, Version 2.0
 
-Performance
------------
+### Performance
+
 This data is the direct output from running
 
     mvn exec:java -Dexec.mainClass="com.spotify.sparkey.system.Benchmark" -Dexec.classpathScope="test"
