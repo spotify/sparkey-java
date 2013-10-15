@@ -18,7 +18,16 @@ Running the benchmark test
 Usage
 -----
 Sparkey is meant to be used as a library embedded in other software.
-Take a look at the [API documentation](http://spotify.github.io/sparkey-java/apidocs/2.0.0-SNAPSHOT/) which gives examples on how to use it.
+
+To import it with maven, use this:
+
+    <dependency>
+      <groupId>com.spotify.sparkey</groupId>
+      <artifactId>sparkey</artifactId>
+      <version>2.0.0</version>
+    </dependency>
+
+Take a look at the [API documentation](http://spotify.github.io/sparkey-java/apidocs/2.0.0-SNAPSHOT/).
 
 License
 -------
