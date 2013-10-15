@@ -221,7 +221,7 @@ final class Util {
     throw new RuntimeException("Too long VLQ value");
   }
 
-  private static int readByte(InputStream input) throws IOException {
+  static int readByte(InputStream input) throws IOException {
     int read = input.read();
     if (read < 0) {
       throw new EOFException();
@@ -241,7 +241,7 @@ final class Util {
     outputStream.write(buf, 0, tail);
   }
 
-  private static void readFully(InputStream inputStream, byte[] buf, int len) throws IOException {
+  static void readFully(InputStream inputStream, byte[] buf, int len) throws IOException {
     int pos = 0;
     int remaining = len;
     while (pos < len) {
