@@ -13,6 +13,20 @@
     <url>scm:https://github.com/spotify/sparkey-java/</url>
   </scm>
 
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+      <comments>A business-friendly OSS license</comments>
+    </license>
+  </licenses>
+
+  <organization>
+    <name>Spotify AB</name>
+    <url>http://www.spotify.com</url>
+  </organization>
+
   <build>
     <plugins>
       <plugin>
