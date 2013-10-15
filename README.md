@@ -27,7 +27,9 @@ To import it with maven, use this:
       <version>2.0.0</version>
     </dependency>
 
-Take a look at the [API documentation](http://spotify.github.io/sparkey-java/apidocs/2.0.0-SNAPSHOT/).
+To help get started, take a look at the
+[API documentation](http://spotify.github.io/sparkey-java/apidocs/2.0.0-SNAPSHOT/)
+or an example usage: [SparkeyExample](src/test/java/com/spotify/sparkey/system/SparkeyExample.java)
 
 License
 -------
