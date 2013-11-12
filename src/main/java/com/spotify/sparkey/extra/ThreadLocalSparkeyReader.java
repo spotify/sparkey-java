@@ -23,29 +23,30 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+
 /**
  * A thread-safe Sparkey Reader.
  */
 public class ThreadLocalSparkeyReader implements SparkeyReader {
-
   private final Collection<SparkeyReader> readers = Lists.newArrayList();
   private final ThreadLocal<SparkeyReader> threadLocalReader;
 
-  private volatile boolean closed;
+  private volatile boolean closed = false;
 
   public ThreadLocalSparkeyReader(File indexFile) throws IOException {
     this(Sparkey.open(indexFile));
   }
 
   public ThreadLocalSparkeyReader(final SparkeyReader reader) {
-    if (reader == null) {
-      throw new IllegalArgumentException("reader may not be null");
-    }
+    checkNotNull(reader, "reader may not be null");
+
     this.readers.add(reader);
     this.threadLocalReader = new ThreadLocal<SparkeyReader>() {
       @Override
       protected SparkeyReader initialValue() {
-        assertNotClosed();
+        checkState(!closed, "reader is closed");
         SparkeyReader r = reader.duplicate();
         synchronized (readers) {
           readers.add(r);
@@ -57,26 +58,17 @@ public class ThreadLocalSparkeyReader implements SparkeyReader {
 
   @Override
   public String getAsString(String key) throws IOException {
-    assertNotClosed();
-    return threadLocalReader.get().getAsString(key);
-  }
-
-  private void assertNotClosed() {
-    if (closed) {
-      throw new IllegalStateException("Reader is closed");
-    }
+    return getLocalReader().getAsString(key);
   }
 
   @Override
   public byte[] getAsByteArray(byte[] key) throws IOException {
-    assertNotClosed();
-    return threadLocalReader.get().getAsByteArray(key);
+    return getLocalReader().getAsByteArray(key);
   }
 
   @Override
   public Entry getAsEntry(byte[] key) throws IOException {
-    assertNotClosed();
-    return threadLocalReader.get().getAsEntry(key);
+    return getLocalReader().getAsEntry(key);
   }
 
   @Override
@@ -93,25 +85,27 @@ public class ThreadLocalSparkeyReader implements SparkeyReader {
 
   @Override
   public IndexHeader getIndexHeader() {
-    assertNotClosed();
-    return threadLocalReader.get().getIndexHeader();
+    return getLocalReader().getIndexHeader();
   }
 
   @Override
   public LogHeader getLogHeader() {
-    assertNotClosed();
-    return threadLocalReader.get().getLogHeader();
+    return getLocalReader().getLogHeader();
   }
 
   @Override
   public SparkeyReader duplicate() {
-    assertNotClosed();
     return this;
   }
 
   @Override
   public Iterator<Entry> iterator() {
-    assertNotClosed();
-    return threadLocalReader.get().iterator();
+    return getLocalReader().iterator();
   }
+
+  protected SparkeyReader getLocalReader() {
+    checkState(!closed, "reader is closed");
+    return threadLocalReader.get();
+  }
+
 }
