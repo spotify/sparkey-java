@@ -58,20 +58,17 @@ public class ThreadLocalSparkeyReader implements SparkeyReader {
 
   @Override
   public String getAsString(String key) throws IOException {
-    checkState(!closed, "reader is closed");
-    return threadLocalReader.get().getAsString(key);
+    return getLocalReader().getAsString(key);
   }
 
   @Override
   public byte[] getAsByteArray(byte[] key) throws IOException {
-    checkState(!closed, "reader is closed");
-    return threadLocalReader.get().getAsByteArray(key);
+    return getLocalReader().getAsByteArray(key);
   }
 
   @Override
   public Entry getAsEntry(byte[] key) throws IOException {
-    checkState(!closed, "reader is closed");
-    return threadLocalReader.get().getAsEntry(key);
+    return getLocalReader().getAsEntry(key);
   }
 
   @Override
@@ -88,25 +85,27 @@ public class ThreadLocalSparkeyReader implements SparkeyReader {
 
   @Override
   public IndexHeader getIndexHeader() {
-    checkState(!closed, "reader is closed");
-    return threadLocalReader.get().getIndexHeader();
+    return getLocalReader().getIndexHeader();
   }
 
   @Override
   public LogHeader getLogHeader() {
-    checkState(!closed, "reader is closed");
-    return threadLocalReader.get().getLogHeader();
+    return getLocalReader().getLogHeader();
   }
 
   @Override
   public SparkeyReader duplicate() {
-    checkState(!closed, "reader is closed");
     return this;
   }
 
   @Override
   public Iterator<Entry> iterator() {
-    checkState(!closed, "reader is closed");
-    return threadLocalReader.get().iterator();
+    return getLocalReader().iterator();
   }
+
+  protected SparkeyReader getLocalReader() {
+    checkState(!closed, "reader is closed");
+    return threadLocalReader.get();
+  }
+
 }
