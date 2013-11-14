@@ -14,6 +14,9 @@ See [Sparkey](http://github.com/spotify/sparkey) for more documentation on how i
 
     mvn exec:java -Dexec.mainClass="com.spotify.sparkey.system.Benchmark" -Dexec.classpathScope="test"
 
+### Changelog
+See [changelog](CHANGELOG.md).
+
 ### Usage
 
 Sparkey is meant to be used as a library embedded in other software.
@@ -23,7 +26,7 @@ To import it with maven, use this:
     <dependency>
       <groupId>com.spotify.sparkey</groupId>
       <artifactId>sparkey</artifactId>
-      <version>2.0.0</version>
+      <version>2.0.1</version>
     </dependency>
 
 To help get started, take a look at the
