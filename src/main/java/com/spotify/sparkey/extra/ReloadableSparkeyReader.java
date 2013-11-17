@@ -55,6 +55,7 @@ public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
   }
 
   private ReloadableSparkeyReader(ListeningExecutorService executorService) {
+    checkArgument(executorService != null, "executor service must not be null");
     this.executorService = executorService;
   }
 
