@@ -64,12 +64,12 @@ public class DelegatingSparkeyReaderTest {
     verify(reader).getDelegateReader();
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testNullDelegate() {
     final SparkeyReader reader = new DelegatingSparkeyReader(null);
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected = IllegalStateException.class)
   public void testDelegateNotSet() throws IOException {
     final DelegatingSparkeyReader reader = new DelegatingSparkeyReader();
     reader.getAsString("key");

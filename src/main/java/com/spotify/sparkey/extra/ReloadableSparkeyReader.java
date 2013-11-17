@@ -36,7 +36,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * This reader is thread-safe.
  */
 public class ReloadableSparkeyReader extends DelegatingSparkeyReader {
-
   private static final Logger log = LoggerFactory.getLogger(ReloadableSparkeyReader.class);
 
   private final ListeningExecutorService executorService;
@@ -57,6 +56,7 @@ public class ReloadableSparkeyReader extends DelegatingSparkeyReader {
   }
 
   private ReloadableSparkeyReader(ListeningExecutorService executorService) {
+    checkArgument(executorService != null, "executor service must not be null");
     this.executorService = executorService;
   }
 

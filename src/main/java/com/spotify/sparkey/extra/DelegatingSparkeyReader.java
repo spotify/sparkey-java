@@ -22,6 +22,7 @@ import com.spotify.sparkey.SparkeyReader;
 import java.io.IOException;
 import java.util.Iterator;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
@@ -41,12 +42,12 @@ public class DelegatingSparkeyReader implements SparkeyReader {
   }
 
   public DelegatingSparkeyReader(final SparkeyReader delegate) {
-    checkNotNull(delegate, "delegate must not be null");
+    checkArgument(delegate != null, "delegate must not be null");
     this.delegate = delegate;
   }
 
   protected SparkeyReader getDelegateReader() {
-    checkNotNull(delegate, "delegate must not be null");
+    checkState(delegate != null, "delegate must not be null");
     return this.delegate;
   }
 
