@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.concurrent.Callable;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -35,8 +34,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * This reader is thread-safe.
  */
-public class ReloadableSparkeyReader implements SparkeyReader {
-
+public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
   private static final Logger log = LoggerFactory.getLogger(ReloadableSparkeyReader.class);
 
   private final ListeningExecutorService executorService;
@@ -45,7 +43,7 @@ public class ReloadableSparkeyReader implements SparkeyReader {
   private volatile File currentLogFile;
 
   /**
-   * Creates a new reloadable sparkey reader from a log file.
+   * Creates a new {@link ReloadableSparkeyReader} from a log file.
    *
    * @param logFile The log file to start with.
    * @param executorService An executor service that is used to run reload tasks on.
@@ -60,6 +58,11 @@ public class ReloadableSparkeyReader implements SparkeyReader {
     this.executorService = executorService;
   }
 
+  /**
+   * Load a new log file into this reader.
+   * @param logFile the log file to load.
+   * @return A future that resolves to the sparkey reader once it has loaded the new log file.
+   */
   public ListenableFuture<ReloadableSparkeyReader> load(final File logFile) {
     checkArgument(isValidLogFile(logFile));
 
@@ -73,38 +76,8 @@ public class ReloadableSparkeyReader implements SparkeyReader {
   }
 
   @Override
-  public String getAsString(String key) throws IOException {
-    return this.reader.getAsString(key);
-  }
-
-  @Override
-  public byte[] getAsByteArray(byte[] key) throws IOException {
-    return this.reader.getAsByteArray(key);
-  }
-
-  @Override
-  public Entry getAsEntry(byte[] key) throws IOException {
-    return this.reader.getAsEntry(key);
-  }
-
-  @Override
-  public void close() throws IOException {
-    this.reader.close();
-  }
-
-  @Override
-  public IndexHeader getIndexHeader() {
-    return this.reader.getIndexHeader();
-  }
-
-  @Override
-  public LogHeader getLogHeader() {
-    return this.reader.getLogHeader();
-  }
-
-  @Override
-  public SparkeyReader duplicate() {
-    return this;
+  protected SparkeyReader getDelegateReader() {
+    return this.reader;
   }
 
   private boolean isValidLogFile(File logFile) {
@@ -159,13 +132,7 @@ public class ReloadableSparkeyReader implements SparkeyReader {
     }
   }
 
-  @Override
-  public Iterator<Entry> iterator() {
-    return reader.iterator();
-  }
-
   public static class ReloadableSparkeyReaderException extends RuntimeException {
-
     public ReloadableSparkeyReaderException(String msg, Throwable t) {
       super(msg, t);
     }
