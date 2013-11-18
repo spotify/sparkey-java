@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013 Spotify AB
+ * Copyright (c) 2013 Spotify AB
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -22,34 +22,15 @@ import com.spotify.sparkey.SparkeyReader;
 import java.io.IOException;
 import java.util.Iterator;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-
 /**
- * A superclass for Sparkey readers that delgate to another {@link SparkeyReader}.
+ * A superclass for Sparkey readers that delegate to another {@link SparkeyReader}.
  *
- * Subclasses must either pass a non-null {@link SparkeyReader} delegate to the
- * {@link DelegatingSparkeyReader#DelegatingSparkeyReader(com.spotify.sparkey.SparkeyReader)}
- * constructor, or override the {@link DelegatingSparkeyReader#getDelegateReader()}
+ * Subclasses must override the {@link AbstractDelegatingSparkeyReader#getDelegateReader()}
  * method.
  */
-public class DelegatingSparkeyReader implements SparkeyReader {
-  private final SparkeyReader delegate;
+public abstract class AbstractDelegatingSparkeyReader implements SparkeyReader {
 
-  public DelegatingSparkeyReader() {
-    this.delegate = null;
-  }
-
-  public DelegatingSparkeyReader(final SparkeyReader delegate) {
-    checkArgument(delegate != null, "delegate must not be null");
-    this.delegate = delegate;
-  }
-
-  protected SparkeyReader getDelegateReader() {
-    checkState(delegate != null, "delegate must not be null");
-    return this.delegate;
-  }
+  protected abstract SparkeyReader getDelegateReader();
 
   @Override
   public String getAsString(String key) throws IOException {

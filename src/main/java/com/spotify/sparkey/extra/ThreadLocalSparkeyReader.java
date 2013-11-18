@@ -21,7 +21,6 @@ import com.spotify.sparkey.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Iterator;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -29,7 +28,7 @@ import static com.google.common.base.Preconditions.checkState;
 /**
  * A thread-safe Sparkey Reader.
  */
-public class ThreadLocalSparkeyReader extends DelegatingSparkeyReader {
+public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
   private final Collection<SparkeyReader> readers = Lists.newArrayList();
   private volatile ThreadLocal<SparkeyReader> threadLocalReader;
 
@@ -38,7 +37,6 @@ public class ThreadLocalSparkeyReader extends DelegatingSparkeyReader {
   }
 
   public ThreadLocalSparkeyReader(final SparkeyReader reader) {
-    super(reader);
     checkNotNull(reader, "reader may not be null");
 
     this.readers.add(reader);

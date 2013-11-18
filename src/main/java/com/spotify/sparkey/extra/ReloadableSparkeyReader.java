@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.concurrent.Callable;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -35,7 +34,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * This reader is thread-safe.
  */
-public class ReloadableSparkeyReader extends DelegatingSparkeyReader {
+public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
   private static final Logger log = LoggerFactory.getLogger(ReloadableSparkeyReader.class);
 
   private final ListeningExecutorService executorService;

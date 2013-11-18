@@ -1,21 +1,28 @@
 package com.spotify.sparkey.extra;
 
 import com.spotify.sparkey.SparkeyReader;
+
 import org.junit.Test;
 
 import java.io.IOException;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 public class DelegatingSparkeyReaderTest {
 
+  private static final class MockDelegatingSparkeyReader extends AbstractDelegatingSparkeyReader {
+    private final SparkeyReader delegate = mock(SparkeyReader.class);
+
+    @Override
+    protected SparkeyReader getDelegateReader() {
+      return this.delegate;
+    }
+  }
+
   @Test
   public void testDelegation() throws IOException {
-    final SparkeyReader delegate = mock(SparkeyReader.class);
-    final SparkeyReader reader = new DelegatingSparkeyReader(delegate);
+    final MockDelegatingSparkeyReader reader = new MockDelegatingSparkeyReader();
+    final SparkeyReader delegate = reader.getDelegateReader();
     final String key = "key";
 
     reader.getAsString(key);
@@ -41,38 +48,6 @@ public class DelegatingSparkeyReaderTest {
 
     reader.close();
     verify(delegate).close();
-  }
-
-  @Test
-  public void testConstructorDelegate() {
-    final SparkeyReader delegate = mock(SparkeyReader.class);
-    final DelegatingSparkeyReader reader = new DelegatingSparkeyReader(delegate);
-    assertEquals(delegate, reader.getDelegateReader());
-  }
-
-  @Test
-  public void testDelegateOverride() throws IOException {
-    final SparkeyReader delegate = mock(SparkeyReader.class);
-    final DelegatingSparkeyReader reader = spy(new DelegatingSparkeyReader() {
-      @Override
-      protected SparkeyReader getDelegateReader() {
-        return delegate;
-      }
-    });
-
-    reader.getAsString("key");
-    verify(reader).getDelegateReader();
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testNullDelegate() {
-    final SparkeyReader reader = new DelegatingSparkeyReader(null);
-  }
-
-  @Test(expected = IllegalStateException.class)
-  public void testDelegateNotSet() throws IOException {
-    final DelegatingSparkeyReader reader = new DelegatingSparkeyReader();
-    reader.getAsString("key");
   }
 
 }
