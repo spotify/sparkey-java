@@ -60,6 +60,11 @@ public class ReloadableReaderExample {
     executorService.shutdown();
     executorService.awaitTermination(10, TimeUnit.SECONDS);
 
+    Sparkey.getIndexFile(logFile).delete();
+    logFile.delete();
+    Sparkey.getIndexFile(logFile2).delete();
+    logFile2.delete();
+
     System.out.println("Done!");
   }
 
