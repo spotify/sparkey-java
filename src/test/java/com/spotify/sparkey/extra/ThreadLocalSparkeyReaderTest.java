@@ -49,13 +49,13 @@ public class ThreadLocalSparkeyReaderTest extends BaseSystemTest {
 
   @Test
   public void testDifferentReaders() throws Exception {
-    final SparkeyReader localReader = reader.getLocalReader();
+    final SparkeyReader localReader = reader.getDelegateReader();
 
     final ExecutorService executorService = Executors.newSingleThreadExecutor();
     final SparkeyReader remoteReader = executorService.submit(new Callable<SparkeyReader>() {
       @Override
       public SparkeyReader call() throws Exception {
-        return reader.getLocalReader();
+        return reader.getDelegateReader();
       }
     }).get();
     executorService.shutdown();
