@@ -90,28 +90,34 @@ final class ReadOnlyMemMap implements RandomAccessData {
     }
   }
 
-  public void seek(long pos) {
+  public void seek(long pos) throws IOException {
+    if (pos > size) {
+      throw new IOException("Corrupt index: referencing data outside of range");
+    }
     int partIndex = (int) (pos >>> 30);
     curChunkIndex = partIndex;
     curChunk = chunks[partIndex];
     curChunk.position((int) (pos & BITMASK_30));
   }
 
-  private void next() {
+  private void next() throws IOException {
     curChunkIndex++;
+    if (curChunkIndex >= chunks.length) {
+      throw new IOException("Corrupt index: referencing data outside of range");
+    }
     curChunk = chunks[curChunkIndex];
     curChunk.position(0);
   }
 
   @Override
-  public int readUnsignedByte() {
+  public int readUnsignedByte() throws IOException {
     if (curChunk.remaining() == 0) {
       next();
     }
     return ((int) curChunk.get()) & 0xFF;
   }
 
-  public void readFully(byte[] buffer, int offset, int length) {
+  public void readFully(byte[] buffer, int offset, int length) throws IOException {
     long remaining = curChunk.remaining();
     if (remaining >= length) {
       curChunk.get(buffer, offset, length);
@@ -125,7 +131,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
     }
   }
 
-  public void skipBytes(long amount) {
+  public void skipBytes(long amount) throws IOException {
     int remaining = curChunk.remaining();
     if (remaining >= amount) {
       curChunk.position((int) (curChunk.position() + amount));

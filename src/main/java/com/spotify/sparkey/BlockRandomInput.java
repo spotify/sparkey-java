@@ -15,17 +15,19 @@
  */
 package com.spotify.sparkey;
 
+import java.io.IOException;
+
 interface BlockRandomInput {
 
   void close();
 
-  void seek(long pos);
+  void seek(long pos) throws IOException;
 
-  int readUnsignedByte();
+  int readUnsignedByte() throws IOException;
 
-  void readFully(byte[] buffer, int offset, int length);
+  void readFully(byte[] buffer, int offset, int length) throws IOException;
 
-  void skipBytes(long amount);
+  void skipBytes(long amount) throws IOException;
 
   BlockRandomInput duplicate();
 

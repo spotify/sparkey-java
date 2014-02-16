@@ -15,6 +15,8 @@
  */
 package com.spotify.sparkey;
 
+import java.io.IOException;
+
 class UncompressedBlockRandomInput implements BlockRandomInput {
   private final ReadOnlyMemMap data;
 
@@ -28,22 +30,22 @@ class UncompressedBlockRandomInput implements BlockRandomInput {
   }
 
   @Override
-  public void seek(long pos) {
+  public void seek(long pos) throws IOException {
     data.seek(pos);
   }
 
   @Override
-  public int readUnsignedByte() {
+  public int readUnsignedByte() throws IOException {
     return data.readUnsignedByte();
   }
 
   @Override
-  public void readFully(byte[] buffer, int offset, int length) {
+  public void readFully(byte[] buffer, int offset, int length) throws IOException {
     data.readFully(buffer, offset, length);
   }
 
   @Override
-  public void skipBytes(long amount) {
+  public void skipBytes(long amount) throws IOException {
     data.skipBytes(amount);
   }
 

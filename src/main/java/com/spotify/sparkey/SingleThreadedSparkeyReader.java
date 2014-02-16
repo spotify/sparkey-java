@@ -108,10 +108,14 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
 
           if (next.getType() == SparkeyReader.Type.PUT) {
             int keyLen = next.getKeyLength();
-            if (isValid(keyLen, next.getKeyBuf(), next.getPosition(), next.getEntryIndex(), indexHash)) {
-              entry = next;
-              ready = true;
-              return true;
+            try {
+              if (isValid(keyLen, next.getKeyBuf(), next.getPosition(), next.getEntryIndex(), indexHash)) {
+                entry = next;
+                ready = true;
+                return true;
+              }
+            } catch (IOException e) {
+              throw new RuntimeException(e);
             }
           }
         }
@@ -134,7 +138,7 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
     };
   }
 
-  private static boolean isValid(int keyLen, byte[] keyBuf, long position, int entryIndex, IndexHash indexHash) {
+  private static boolean isValid(int keyLen, byte[] keyBuf, long position, int entryIndex, IndexHash indexHash) throws IOException {
     return indexHash.isAt(keyLen, keyBuf, position, entryIndex);
   }
 

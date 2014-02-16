@@ -79,6 +79,10 @@ public final class LogHeader extends CommonHeader {
       long putSize = Util.readLittleEndianLong(inputStream);
       int maxEntriesPerBlock = Util.readLittleEndianInt(inputStream);
 
+      if (dataEnd > file.length()) {
+        throw new IOException("Corrupt log file '" + file.toString() +"': expected at least " + dataEnd + " size but was " + file.length());
+      }
+
       return new LogHeader(majorVersion, minorVersion, fileIdentifier, numPuts, numDeletes, dataEnd, maxKeyLen, maxValueLen, deleteSize, CompressionType.values()[compressionType], compressionBlockSize, putSize,
               maxEntriesPerBlock);
     } finally {
