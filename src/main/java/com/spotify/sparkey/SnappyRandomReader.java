@@ -41,31 +41,27 @@ final class SnappyRandomReader implements BlockRandomInput {
   }
 
   @Override
-  public int readUnsignedByte() {
+  public int readUnsignedByte() throws IOException {
     return ((int) readSignedByte()) & 0xFF;
   }
 
-  private byte readSignedByte() {
+  private byte readSignedByte() throws IOException {
     if (bufPos >= blockSize) {
       fetchBlock();
     }
     return uncompressedBuf[bufPos++];
   }
 
-  private void fetchBlock() {
+  private void fetchBlock() throws IOException {
     int compressedSize = Util.readUnsignedVLQInt(data);
     data.readFully(compressedBuf, 0, compressedSize);
     bufPos = 0;
-    try {
-      blockSize = Snappy.uncompress(compressedBuf, 0, compressedSize, uncompressedBuf, 0);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    blockSize = Snappy.uncompress(compressedBuf, 0, compressedSize, uncompressedBuf, 0);
     position = -1;
   }
 
   @Override
-  public void readFully(byte[] b, int off, int len) {
+  public void readFully(byte[] b, int off, int len) throws IOException {
     int remaining = blockSize - bufPos;
     if (remaining >= len) {
       System.arraycopy(uncompressedBuf, bufPos, b, off, len);
@@ -88,7 +84,7 @@ final class SnappyRandomReader implements BlockRandomInput {
    * @param position
    */
   @Override
-  public void seek(long position) {
+  public void seek(long position) throws IOException {
     if (position != this.position) {
       this.position = position;
       blockSize = 0;
@@ -98,7 +94,7 @@ final class SnappyRandomReader implements BlockRandomInput {
   }
 
   @Override
-  public void skipBytes(long n) {
+  public void skipBytes(long n) throws IOException {
     int remaining = blockSize - bufPos;
     if (n < remaining) {
       bufPos += n;

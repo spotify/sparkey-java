@@ -62,28 +62,34 @@ final class InMemoryData implements RandomAccessData {
     curChunk = null;
   }
 
-  void seek(long pos) {
+  void seek(long pos) throws IOException {
+    if (pos > size) {
+      throw new IOException("Corrupt index: referencing data outside of range");
+    }
     int chunkIndex = (int) (pos >>> 30);
     curChunkIndex = chunkIndex;
     curChunk = chunks[chunkIndex];
     curChunkPos = ((int) pos) & BITMASK_30;
   }
 
-  void writeUnsignedByte(int value) {
+  void writeUnsignedByte(int value) throws IOException {
     if (curChunkPos == CHUNK_SIZE) {
       next();
     }
     curChunk[curChunkPos++] = (byte) value;
   }
 
-  private void next() {
+  private void next() throws IOException {
     curChunkIndex++;
+    if (curChunkIndex >= chunks.length) {
+      throw new IOException("Corrupt index: referencing data outside of range");
+    }
     curChunk = chunks[curChunkIndex];
     curChunkPos = 0;
   }
 
   @Override
-  public int readUnsignedByte() {
+  public int readUnsignedByte() throws IOException {
     if (curChunkPos == CHUNK_SIZE) {
       next();
     }

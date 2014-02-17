@@ -73,6 +73,10 @@ final class IndexHash {
     LogHeader logHeader = LogHeader.read(logFile);
     verifyIdentifier(logHeader, header);
 
+    if (header.getDataEnd() > logHeader.getDataEnd()) {
+      throw new IOException("Corrupt index file '" + indexFile.toString() + "': referencing more data than exists in the log file");
+    }
+
     ReadOnlyMemMap indexData = new ReadOnlyMemMap(indexFile);
     int maxBlockSize = logHeader.getCompressionBlockSize();
     BlockRandomInput logData = logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile),
@@ -113,7 +117,7 @@ final class IndexHash {
     flushToFile(indexFile, header, indexData);
   }
 
-  private static void calculateMaxDisplacement(IndexHeader header, InMemoryData indexData) {
+  private static void calculateMaxDisplacement(IndexHeader header, InMemoryData indexData) throws IOException {
     HashType hashData = header.getHashType();
     AddressSize addressData = header.getAddressData();
 
@@ -231,7 +235,7 @@ final class IndexHash {
     }
   }
 
-  boolean isAt(int keyLen, byte[] key, long position, int entryIndex) {
+  boolean isAt(int keyLen, byte[] key, long position, int entryIndex) throws IOException {
     HashType hashData = header.getHashType();
     AddressSize addressData = header.getAddressData();
     long hash = hashData.hash(keyLen, key, hashSeed);
