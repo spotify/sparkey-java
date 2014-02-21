@@ -111,6 +111,7 @@ public final class LogHeader extends CommonHeader {
     if (rw.getFilePointer() != HEADER_SIZE) {
       throw new RuntimeException("Programming error! Header size was incorrect, expected " + HEADER_SIZE + " but was " + rw.getFilePointer());
     }
+    rw.close();
   }
 
   public int getMajorVersion() {

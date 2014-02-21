@@ -15,26 +15,50 @@
  */
 package com.spotify.sparkey;
 
+import com.google.common.collect.Lists;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 final class ReadOnlyMemMap implements RandomAccessData {
+  private static final ScheduledExecutorService CLEANER = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+    @Override
+    public Thread newThread(Runnable r) {
+      Thread thread = new Thread(r);
+      thread.setName(ReadOnlyMemMap.class.getSimpleName() + "-cleaner");
+      thread.setDaemon(true);
+      return thread;
+    }
+  });
+
   private static final long MAP_SIZE = 1 << 30;
   private static final long BITMASK_30 = ((1L << 30) - 1);
+  private final File file;
 
-  private final MappedByteBuffer[] chunks;
+  private volatile MappedByteBuffer[] chunks;
   private final RandomAccessFile randomAccessFile;
   private final long size;
   private final int numChunks;
 
   private int curChunkIndex;
-  private MappedByteBuffer curChunk;
+  private volatile MappedByteBuffer curChunk;
 
+  // Used for making sure we close all instances before cleaning up the byte buffers
+  private final List<ReadOnlyMemMap> allInstances;
 
   ReadOnlyMemMap(File file) throws IOException {
+    this.file = file;
+    this.allInstances = Lists.newArrayList();
+    this.allInstances.add(this);
+
     this.randomAccessFile = new RandomAccessFile(file, "r");
     this.size = file.length();
     if (size <= 0) {
@@ -63,54 +87,75 @@ final class ReadOnlyMemMap implements RandomAccessData {
     curChunk.position(0);
   }
 
-  private ReadOnlyMemMap(ReadOnlyMemMap largeMemMap) {
-    this.randomAccessFile = largeMemMap.randomAccessFile;
-    this.size = largeMemMap.size;
-    this.numChunks = largeMemMap.numChunks;
-    this.chunks = new MappedByteBuffer[numChunks];
-
-    for (int i = 0; i < numChunks; i++) {
-      chunks[i] = (MappedByteBuffer) largeMemMap.chunks[i].duplicate();
-    }
-
+  private ReadOnlyMemMap(ReadOnlyMemMap source, MappedByteBuffer[] chunks) {
+    this.file = source.file;
+    this.allInstances = source.allInstances;
+    this.randomAccessFile = source.randomAccessFile;
+    this.size = source.size;
+    this.numChunks = source.numChunks;
+    this.chunks = chunks;
     curChunkIndex = 0;
     curChunk = chunks[0];
     curChunk.position(0);
   }
 
   public void close() {
-    for (int i = 0; i < numChunks; i++) {
-      chunks[i] = null;
+    final MappedByteBuffer[] chunks;
+    synchronized (allInstances) {
+      if (this.chunks == null) {
+        return;
+      }
+      chunks = this.chunks;
+      for (ReadOnlyMemMap map : allInstances) {
+        map.chunks = null;
+        map.curChunk = null;
+        try {
+          map.randomAccessFile.close();
+        } catch (IOException e) {
+          e.printStackTrace(System.err);
+        }
+      }
     }
-    curChunk = null;
-    try {
-      randomAccessFile.close();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    // Wait a bit with closing so that all threads have a chance to see the that
+    // chunks and curChunks are null
+    CLEANER.schedule(new Runnable() {
+      @Override
+      public void run() {
+        for (MappedByteBuffer chunk : chunks) {
+          ByteBufferCleaner.cleanMapping(chunk);
+        }
+      }
+    }, 1000, TimeUnit.MILLISECONDS);
   }
 
   public void seek(long pos) throws IOException {
     if (pos > size) {
-      throw new IOException("Corrupt index: referencing data outside of range");
+      throw corruptionException();
     }
     int partIndex = (int) (pos >>> 30);
     curChunkIndex = partIndex;
-    curChunk = chunks[partIndex];
+    MappedByteBuffer[] chunks = getChunks();
+    MappedByteBuffer curChunk = chunks[partIndex];
     curChunk.position((int) (pos & BITMASK_30));
+    this.curChunk = curChunk;
   }
 
   private void next() throws IOException {
+    MappedByteBuffer[] chunks = getChunks();
     curChunkIndex++;
     if (curChunkIndex >= chunks.length) {
-      throw new IOException("Corrupt index: referencing data outside of range");
+      throw corruptionException();
     }
-    curChunk = chunks[curChunkIndex];
-    curChunk.position(0);
+    MappedByteBuffer curChunk = chunks[curChunkIndex];
+    if (curChunk != null) {
+      curChunk.position(0);
+      this.curChunk = curChunk;
+    }
   }
 
   @Override
   public int readUnsignedByte() throws IOException {
+    MappedByteBuffer curChunk = getCurChunk();
     if (curChunk.remaining() == 0) {
       next();
     }
@@ -118,6 +163,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   }
 
   public void readFully(byte[] buffer, int offset, int length) throws IOException {
+    MappedByteBuffer curChunk = getCurChunk();
     long remaining = curChunk.remaining();
     if (remaining >= length) {
       curChunk.get(buffer, offset, length);
@@ -132,6 +178,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   }
 
   public void skipBytes(long amount) throws IOException {
+    MappedByteBuffer curChunk = getCurChunk();
     int remaining = curChunk.remaining();
     if (remaining >= amount) {
       curChunk.position((int) (curChunk.position() + amount));
@@ -141,8 +188,44 @@ final class ReadOnlyMemMap implements RandomAccessData {
     }
   }
 
+  private MappedByteBuffer[] getChunks() throws SparkeyReaderClosedException {
+    MappedByteBuffer[] localChunks = chunks;
+    if (localChunks == null) {
+      throw closedException();
+    }
+    return localChunks;
+  }
+
+  private MappedByteBuffer getCurChunk() throws SparkeyReaderClosedException {
+    MappedByteBuffer curChunk = this.curChunk;
+    if (curChunk == null) {
+      throw closedException();
+    }
+    return curChunk;
+  }
+
+  private IOException corruptionException() {
+    return new CorruptedIndexException("Index is likely corrupt (" + file.getPath() + "), referencing data outside of range");
+  }
+
+  private SparkeyReaderClosedException closedException() {
+    return new SparkeyReaderClosedException("Reader has been closed");
+  }
+
   public ReadOnlyMemMap duplicate() {
-    return new ReadOnlyMemMap(this);
+    synchronized (allInstances) {
+      if (chunks == null) {
+        // Duplicating a closed instance is silly, and there's no point in actually duplicating it
+        return this;
+      }
+      MappedByteBuffer[] chunks = new MappedByteBuffer[numChunks];
+      for (int i = 0; i < numChunks; i++) {
+        chunks[i] = (MappedByteBuffer) this.chunks[i].duplicate();
+      }
+      ReadOnlyMemMap duplicate = new ReadOnlyMemMap(this, chunks);
+      allInstances.add(duplicate);
+      return duplicate;
+    }
   }
 
   @Override
@@ -152,4 +235,5 @@ final class ReadOnlyMemMap implements RandomAccessData {
             ", size=" + size +
             '}';
   }
+
 }
