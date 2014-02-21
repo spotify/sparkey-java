@@ -61,11 +61,6 @@ final class IndexHash {
     entryBlockBitmask = ((1 << entryBlockBits) - 1);
 
     stream = new SafeStream(logData);
-    long expectedFileSize = IndexHeader.HEADER_SIZE + slotSize * hashCapacity;
-    if (expectedFileSize != indexFile.length()) {
-      throw new RuntimeException("Corrupt index file - incorrect size. Expected " + expectedFileSize + " but was " + indexFile.length());
-    }
-
   }
 
   static IndexHash open(File indexFile, File logFile) throws IOException {
@@ -82,7 +77,16 @@ final class IndexHash {
     BlockRandomInput logData = logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile),
             maxBlockSize);
 
-    return new IndexHash(indexFile, logFile, header, logHeader, indexData, maxBlockSize, logData);
+    IndexHash indexHash = new IndexHash(indexFile, logFile, header, logHeader, indexData, maxBlockSize, logData);
+    indexHash.validate();
+    return indexHash;
+  }
+
+  private void validate() {
+    long expectedFileSize = IndexHeader.HEADER_SIZE + slotSize * hashCapacity;
+    if (expectedFileSize != indexFile.length()) {
+      throw new RuntimeException("Corrupt index file - incorrect size. Expected " + expectedFileSize + " but was " + indexFile.length());
+    }
   }
 
   private static int calcEntryBlockBits(int maxEntriesPerBlock) {
