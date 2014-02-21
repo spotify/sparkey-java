@@ -15,6 +15,8 @@
  */
 package com.spotify.sparkey;
 
+import com.google.common.base.Charsets;
+
 import java.io.*;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -197,11 +199,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
 
     @Override
     public String getKeyAsString() {
-      try {
-        return new String(keyBuf, 0, keyLen, "UTF-8");
-      } catch (UnsupportedEncodingException e) {
-        throw new RuntimeException(e);
-      }
+      return new String(keyBuf, 0, keyLen, Charsets.UTF_8);
     }
 
     @Override
@@ -211,7 +209,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
 
     @Override
     public String getValueAsString() throws IOException {
-      return new String(getValue(), "UTF-8");
+      return new String(getValue(), Charsets.UTF_8);
     }
 
     @Override

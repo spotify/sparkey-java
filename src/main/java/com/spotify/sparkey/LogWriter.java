@@ -15,6 +15,8 @@
  */
 package com.spotify.sparkey;
 
+import com.google.common.base.Charsets;
+
 import java.io.*;
 
 final class LogWriter {
@@ -81,7 +83,7 @@ final class LogWriter {
   }
 
   void put(String key, String value) throws IOException {
-    put(key.getBytes("UTF-8"), value.getBytes("UTF-8"));
+    put(key.getBytes(Charsets.UTF_8), value.getBytes(Charsets.UTF_8));
   }
 
   void put(byte[] key, byte[] value) throws IOException {
@@ -95,7 +97,7 @@ final class LogWriter {
   }
 
   void delete(String key) throws IOException {
-    delete(key.getBytes("UTF-8"));
+    delete(key.getBytes(Charsets.UTF_8));
   }
 
   void delete(byte[] key) throws IOException {

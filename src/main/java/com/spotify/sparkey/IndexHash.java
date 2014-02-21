@@ -15,6 +15,7 @@
  */
 package com.spotify.sparkey;
 
+import com.google.common.base.Charsets;
 import com.google.common.primitives.UnsignedLongs;
 
 import java.io.*;
@@ -542,11 +543,7 @@ final class IndexHash {
 
     @Override
     public String getKeyAsString() {
-      try {
-        return new String(keyBuf, 0, keyLen, "UTF_8");
-      } catch (UnsupportedEncodingException e) {
-        throw new RuntimeException(e);
-      }
+      return new String(keyBuf, 0, keyLen, Charsets.UTF_8);
     }
 
     @Override
@@ -556,7 +553,7 @@ final class IndexHash {
 
     @Override
     public String getValueAsString() throws IOException {
-      return new String(getValue(), "UTF-8");
+      return new String(getValue(), Charsets.UTF_8);
     }
 
     @Override
