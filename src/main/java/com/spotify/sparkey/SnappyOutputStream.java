@@ -29,6 +29,8 @@ final class SnappyOutputStream extends OutputStream {
   private int pending;
   private SnappyWriter listener = SnappyWriter.DUMMY;
 
+  private long count;
+
   SnappyOutputStream(int maxBlockSize, OutputStream output) throws IOException {
     if (maxBlockSize < 10) {
       throw new IOException("Too small block size - won't be able to fit keylen + valuelen in a single block");
@@ -70,16 +72,19 @@ final class SnappyOutputStream extends OutputStream {
     if (len < remaining) {
       System.arraycopy(b, off, uncompressedBuffer, pending, len);
       pending += len;
+      count += len;
     } else {
       System.arraycopy(b, off, uncompressedBuffer, pending, remaining);
       pending = maxBlockSize;
       flush();
+      count += remaining;
       write(b, off + remaining, len - remaining);
     }
   }
 
   @Override
   public void write(int b) throws IOException {
+    count++;
     uncompressedBuffer[pending++] = (byte) b;
     if (pending == maxBlockSize) {
       flush();
@@ -100,5 +105,9 @@ final class SnappyOutputStream extends OutputStream {
 
   int getMaxBlockSize() {
     return maxBlockSize;
+  }
+
+  public long getCount() {
+    return count;
   }
 }
