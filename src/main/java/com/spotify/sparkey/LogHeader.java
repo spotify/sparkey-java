@@ -194,6 +194,10 @@ public final class LogHeader extends CommonHeader {
             '}';
   }
 
+  public long getPutSize() {
+    return putSize;
+  }
+
   public long getDeleteSize() {
     return deleteSize;
   }
