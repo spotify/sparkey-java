@@ -87,13 +87,13 @@ final class LogWriter {
   }
 
   void put(byte[] key, byte[] value) throws IOException {
-    logStream.put(key, key.length, value, value.length);
-    header.put(key.length, value.length);
+    long bytesWritten = logStream.put(key, key.length, value, value.length);
+    header.put(key.length, value.length, bytesWritten);
   }
 
   void put(byte[] key, InputStream value, long valueLen) throws IOException {
-    logStream.put(key, key.length, value, valueLen);
-    header.put(key.length, valueLen);
+    long bytesWritten = logStream.put(key, key.length, value, valueLen);
+    header.put(key.length, valueLen, bytesWritten);
   }
 
   void delete(String key) throws IOException {
@@ -102,8 +102,8 @@ final class LogWriter {
 
   void delete(byte[] key) throws IOException {
     if (key.length <= header.getMaxKeyLen()) {
-      logStream.delete(key, key.length);
-      header.delete(key.length);
+      long bytesWritten = logStream.delete(key, key.length);
+      header.delete(bytesWritten);
     }
   }
 

@@ -19,11 +19,11 @@ import java.io.IOException;
 import java.io.InputStream;
 
 interface BlockOutput {
-  void put(byte[] key, int keyLen, byte[] value, int valueLen) throws IOException;
+  long put(byte[] key, int keyLen, byte[] value, int valueLen) throws IOException;
 
-  void put(byte[] key, int keyLen, InputStream value, long valueLen) throws IOException;
+  long put(byte[] key, int keyLen, InputStream value, long valueLen) throws IOException;
 
-  void delete(byte[] key, int keyLen) throws IOException;
+  long delete(byte[] key, int keyLen) throws IOException;
 
   void flush() throws IOException;
 

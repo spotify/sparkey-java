@@ -39,7 +39,7 @@ public class SnappyWriter implements BlockOutput {
   }
 
   @Override
-  public void put(byte[] key, int keyLen, byte[] value, int valueLen) throws IOException {
+  public long put(byte[] key, int keyLen, byte[] value, int valueLen) throws IOException {
     int keySize = Util.unsignedVLQSize(keyLen + 1) + Util.unsignedVLQSize(valueLen);
     int totalSize = keySize + keyLen + valueLen;
 
@@ -47,26 +47,31 @@ public class SnappyWriter implements BlockOutput {
     flushed = false;
     currentNumEntries++;
 
+    long pre = snappyOutputStream.getCount();
+
     Util.writeUnsignedVLQ(keyLen + 1, snappyOutputStream);
     Util.writeUnsignedVLQ(valueLen, snappyOutputStream);
     snappyOutputStream.write(key, 0, keyLen);
     snappyOutputStream.write(value, 0, valueLen);
 
-
     // Make sure that the beginning of each block is the start of a key/value pair
     if (flushed && snappyOutputStream.getPending() > 0) {
       snappyOutputStream.flush();
     }
+
+    return snappyOutputStream.getCount() - pre;
   }
 
   @Override
-  public void put(byte[] key, int keyLen, InputStream value, long valueLen) throws IOException {
+  public long put(byte[] key, int keyLen, InputStream value, long valueLen) throws IOException {
     int keySize = Util.unsignedVLQSize(keyLen + 1) + Util.unsignedVLQSize(valueLen);
     long totalSize = keySize + keyLen + valueLen;
 
     smartFlush(keySize, totalSize);
     flushed = false;
     currentNumEntries++;
+
+    long pre = snappyOutputStream.getCount();
 
     Util.writeUnsignedVLQ(keyLen + 1, snappyOutputStream);
     Util.writeUnsignedVLQ(valueLen, snappyOutputStream);
@@ -77,6 +82,8 @@ public class SnappyWriter implements BlockOutput {
     if (flushed && snappyOutputStream.getPending() > 0) {
       snappyOutputStream.flush();
     }
+
+    return snappyOutputStream.getCount() - pre;
   }
 
   private void smartFlush(int keySize, long totalSize) throws IOException {
@@ -89,12 +96,14 @@ public class SnappyWriter implements BlockOutput {
   }
 
   @Override
-  public void delete(byte[] key, int keyLen) throws IOException {
+  public long delete(byte[] key, int keyLen) throws IOException {
     int keySize = 1 + Util.unsignedVLQSize(keyLen + 1);
     smartFlush(keySize, keySize + keyLen);
 
     flushed = false;
     currentNumEntries++;
+
+    long pre = snappyOutputStream.getCount();
 
     snappyOutputStream.write(0);
     Util.writeUnsignedVLQ(keyLen, snappyOutputStream);
@@ -104,6 +113,8 @@ public class SnappyWriter implements BlockOutput {
     if (flushed && snappyOutputStream.getPending() > 0) {
       snappyOutputStream.flush();
     }
+
+    return snappyOutputStream.getCount() - pre;
   }
 
   @Override

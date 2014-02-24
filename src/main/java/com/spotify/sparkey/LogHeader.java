@@ -154,17 +154,16 @@ public final class LogHeader extends CommonHeader {
     return maxValueLen;
   }
 
-  void put(int keyLen, long valueLen) {
+  void put(int keyLen, long valueLen, long bytesWritten) {
     numPuts++;
     maxKeyLen = Math.max(maxKeyLen, keyLen);
     maxValueLen = Math.max(maxValueLen, valueLen);
-    putSize += Util.unsignedVLQSize(keyLen + 1) + Util.unsignedVLQSize(valueLen) + keyLen + valueLen;
+    putSize += bytesWritten;
   }
 
-  void delete(int keyLen) {
+  void delete(long bytesWritten) {
     numDeletes++;
-    int size = 1 + Util.unsignedVLQSize(keyLen) + keyLen;
-    deleteSize += size;
+    deleteSize += bytesWritten;
   }
 
   public long size() {
@@ -192,6 +191,10 @@ public final class LogHeader extends CommonHeader {
             ",\n compressionBlockSize=" + compressionBlockSize +
             ",\n maxEntriesPerBlock=" + maxEntriesPerBlock +
             '}';
+  }
+
+  public long getPutSize() {
+    return putSize;
   }
 
   public long getDeleteSize() {
