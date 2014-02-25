@@ -98,7 +98,10 @@ final class IndexHash {
     return i;
   }
 
-  static void createNew(File indexFile, File logFile, HashType hashType) throws IOException {
+  static void createNew(File indexFile, File logFile, HashType hashType, double sparsity) throws IOException {
+    if (sparsity < 1.3) {
+      sparsity = 1.3;
+    }
     LogHeader logHeader = LogHeader.read(logFile);
 
     int addressSize = calcAddressSize(logHeader) ? 4 : 8;
@@ -106,7 +109,7 @@ final class IndexHash {
       hashType = logHeader.getNumPuts() < (1 << 23) ? HashType.HASH_32_BITS : HashType.HASH_64_BITS;
     }
 
-    long capacity = 1L | (long) (logHeader.getNumPuts() * 1.3);
+    long capacity = 1L | (long) (logHeader.getNumPuts() * sparsity);
 
     IndexHeader header = new IndexHeader(logHeader.getFileIdentifier(), logHeader.getDataEnd(),
             logHeader.getMaxKeyLen(), logHeader.getMaxValueLen(), addressSize, hashType.size(), capacity, logHeader.getNumPuts(), new Random().nextInt(),

@@ -67,6 +67,23 @@ public interface SparkeyWriter {
    * which is required for random lookups to be visible.
    *
    * @param hashType choice of hash type, can be 32 or 64 bits.
+   * @deprecated Use writer.setHashType(hashType); writer.writeHash(); instead
    */
+  @Deprecated
   void writeHash(HashType hashType) throws IOException;
+
+  /**
+   * Set the hash type for all subsequent writeHash operations.
+   * @param hashType choice of hash type, can be 32 or 64 bits.
+   *                 if null, will use the default.
+   */
+  void setHashType(HashType hashType);
+
+  /**
+   * Set the sparsity for all subsequent writeHash operations.
+   * A sparsity of 1.0 would mean that every slot in the hash table is occupied.
+   * The actual minimum sparsity level is 1.3, values lower than this are ignored.
+   * @param sparsity
+   */
+  void setHashSparsity(double sparsity);
 }
