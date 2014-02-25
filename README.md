@@ -41,73 +41,47 @@ Apache License, Version 2.0
 
 This data is the direct output from running
 
-    mvn exec:java -Dexec.mainClass="com.spotify.sparkey.system.Benchmark" -Dexec.classpathScope="test"
+    mvn clean package install && (cd benchmark; mvn clean package)
+    scp benchmark/target/microbenchmarks.jar $TESTMACHINE:
+    
+and then running this on the test machine:
+
+    java -jar microbenchmarks.jar com.spotify.sparkey.system.*.*
 
 on the same machine ((Intel(R) Xeon(R) CPU L5630 @ 2.13GHz))
 as the performance benchmark for the sparkey c implementation, so the numbers should
 be somewhat comparable.
 
-    Testing bulk insert of 1000 elements and 1000.000 random lookups
-      Candidate: Sparkey NONE
-        creation time (wall):         0.06
-        throughput (puts/wallsec):    17241.38
-        file size:                    28384
-        lookup time (wall):           0.70
-        throughput (lookups/wallsec): 1430615.16
+    Benchmark                            (numElements) (type)   Mode   Samples         Mean   Mean error    Units
+    c.s.s.s.AppendBenchmark.testMedium             N/A   NONE  thrpt       100   560514.462    11164.792    ops/s
+    c.s.s.s.AppendBenchmark.testMedium             N/A SNAPPY  thrpt       100   287809.906     5216.655    ops/s
+    c.s.s.s.AppendBenchmark.testSmall              N/A   NONE  thrpt       100  2530425.989   106629.449    ops/s
+    c.s.s.s.AppendBenchmark.testSmall              N/A SNAPPY  thrpt       100  2909965.740   114540.700    ops/s
+    
+    c.s.s.s.LookupBenchmark.test                  1000   NONE  thrpt       100  1583592.318    44701.721    ops/s
+    c.s.s.s.LookupBenchmark.test                  1000 SNAPPY  thrpt       100   401894.168     6929.453    ops/s
+    c.s.s.s.LookupBenchmark.test                 10000   NONE  thrpt       100  1505772.744    44702.055    ops/s
+    c.s.s.s.LookupBenchmark.test                 10000 SNAPPY  thrpt       100   417876.461     7232.855    ops/s
+    c.s.s.s.LookupBenchmark.test                100000   NONE  thrpt       100  1328646.838    35313.306    ops/s
+    c.s.s.s.LookupBenchmark.test                100000 SNAPPY  thrpt       100   422015.707     5738.393    ops/s
+    c.s.s.s.LookupBenchmark.test               1000000   NONE  thrpt       100  1132310.981    34490.731    ops/s
+    c.s.s.s.LookupBenchmark.test               1000000 SNAPPY  thrpt       100   387936.344     6120.736    ops/s
+    c.s.s.s.LookupBenchmark.test              10000000   NONE  thrpt       100   963257.371    15601.812    ops/s
+    c.s.s.s.LookupBenchmark.test              10000000 SNAPPY  thrpt       100   388512.642     1823.866    ops/s
+    c.s.s.s.LookupBenchmark.test             100000000   NONE  thrpt        80   764810.198    23815.241    ops/s
+    c.s.s.s.LookupBenchmark.test             100000000 SNAPPY  thrpt       100   367202.525     4695.112    ops/s
+    
+    c.s.s.s.WriteHashBenchmark.test          100000000    N/A     ss       100       86.003        2.437        s
+    c.s.s.s.WriteHashBenchmark.test           10000000    N/A     ss       100        6.772        0.116        s
+    c.s.s.s.WriteHashBenchmark.test            1000000    N/A     ss       100        0.424        0.012        s
+    c.s.s.s.WriteHashBenchmark.test             100000    N/A     ss       100        0.046        0.000        s
+    c.s.s.s.WriteHashBenchmark.test              10000    N/A     ss       100        0.006        0.001        s
+    c.s.s.s.WriteHashBenchmark.test               1000    N/A     ss       100        0.008        0.001        s
 
-    Testing bulk insert of 1000.000 elements and 1000.000 random lookups
-      Candidate: Sparkey NONE
-        creation time (wall):         1.11
-        throughput (puts/wallsec):    899280.58
-        file size:                    34177984
-        lookup time (wall):           0.85
-        throughput (lookups/wallsec): 1179245.28
-
-    Testing bulk insert of 10.000.000 elements and 1000.000 random lookups
-      Candidate: Sparkey NONE
-        creation time (wall):         10.40
-        throughput (puts/wallsec):    961815.91
-        file size:                    413778012
-        lookup time (wall):           1.09
-        throughput (lookups/wallsec): 916590.28
-
-    Testing bulk insert of 100.000.000 elements and 1000.000 random lookups
-      Candidate: Sparkey NONE
-        creation time (wall):         124.08
-        throughput (puts/wallsec):    805905.68
-        file size:                    4857777992
-        lookup time (wall):           2.20
-        throughput (lookups/wallsec): 455580.87
-
-    Testing bulk insert of 1000 elements and 1000.000 random lookups
-      Candidate: Sparkey SNAPPY
-        creation time (wall):         0.11
-        throughput (puts/wallsec):    9523.81
-        file size:                    19085
-        lookup time (wall):           2.56
-        throughput (lookups/wallsec): 390930.41
-
-    Testing bulk insert of 1000.000 elements and 1000.000 random lookups
-      Candidate: Sparkey SNAPPY
-        creation time (wall):         1.19
-        throughput (puts/wallsec):    843170.32
-        file size:                    24368687
-        lookup time (wall):           2.48
-        throughput (lookups/wallsec): 403225.81
-
-    Testing bulk insert of 10.000.000 elements and 1000.000 random lookups
-      Candidate: Sparkey SNAPPY
-        creation time (wall):         13.49
-        throughput (puts/wallsec):    741344.80
-        file size:                    311872219
-        lookup time (wall):           2.64
-        throughput (lookups/wallsec): 379075.06
-
-    Testing bulk insert of 100.000.000 elements and 1000.000 random lookups
-      Candidate: Sparkey SNAPPY
-        creation time (wall):         139.14
-        throughput (puts/wallsec):    718705.75
-        file size:                    3162865465
-        lookup time (wall):           3.34
-        throughput (lookups/wallsec): 299850.07
+Some notes on the results:
+* the AppendBenchmark is bottlenecking on disk write rather than CPU.
+* The lookup performance degrades somewhat as more elements are added. It is unclear exactly what causes this,
+  but it is likely a combination of page cache misses, cpu cache misses and algorithmic complexity of the hash algorithm.
+* The writeHash performance appears to be mostly linear, the actual superlinear behaviour is possibly due to
+  page cache misses and algorithmic complexity of the hash algorithm.
 
