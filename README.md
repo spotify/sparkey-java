@@ -79,9 +79,8 @@ be somewhat comparable.
     c.s.s.s.WriteHashBenchmark.test               1000    N/A     ss       100        0.008        0.001        s
 
 Some notes on the results:
-* the AppendBenchmark is bottlenecking on disk write rather than CPU.
+* The AppendBenchmark is bottlenecking on disk write rather than CPU.
 * The lookup performance degrades somewhat as more elements are added. It is unclear exactly what causes this,
   but it is likely a combination of page cache misses, cpu cache misses and algorithmic complexity of the hash algorithm.
 * The writeHash performance appears to be mostly linear, the actual superlinear behaviour is possibly due to
   page cache misses and algorithmic complexity of the hash algorithm.
-
