@@ -273,6 +273,7 @@ final class IndexHash {
       }
 
       pos += slotSize;
+      displacement++;
       slot++;
       if (slot == hashCapacity) {
         pos = start;
