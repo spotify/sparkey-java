@@ -10,10 +10,6 @@ See [Sparkey](http://github.com/spotify/sparkey) for more documentation on how i
 
     mvn package
 
-### Running the benchmark test
-
-    mvn exec:java -Dexec.mainClass="com.spotify.sparkey.system.Benchmark" -Dexec.classpathScope="test"
-
 ### Changelog
 See [changelog](CHANGELOG.md).
 
