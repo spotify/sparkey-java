@@ -84,6 +84,10 @@ public class CorrectnessTest extends BaseSystemTest {
 
   private void testHelperWithDeletes(int N, CompressionType compressionType, int compressionBlockSize, HashType hashType) throws IOException {
     SparkeyWriter writer = Sparkey.createNew(indexFile, compressionType, compressionBlockSize);
+
+    writer.setFsync(true);
+    writer.setHashType(hashType);
+
     for (int i = 0; i < N; i++) {
       writer.put("Key" + i, "Value" + i);
     }
@@ -109,7 +113,7 @@ public class CorrectnessTest extends BaseSystemTest {
       }
     }
 
-    writer.writeHash(hashType);
+    writer.writeHash();
     writer.close();
 
 

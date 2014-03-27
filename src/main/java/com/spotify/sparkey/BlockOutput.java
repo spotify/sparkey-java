@@ -25,9 +25,9 @@ interface BlockOutput {
 
   void delete(byte[] key, int keyLen) throws IOException;
 
-  void flush() throws IOException;
+  void flush(boolean fsync) throws IOException;
 
-  void close() throws IOException;
+  void close(boolean fsync) throws IOException;
 
   int getMaxEntriesPerBlock();
 }

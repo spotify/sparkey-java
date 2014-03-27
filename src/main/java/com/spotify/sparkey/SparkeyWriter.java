@@ -73,6 +73,13 @@ public interface SparkeyWriter {
   void writeHash(HashType hashType) throws IOException;
 
   /**
+   * Set whether or not flushes and hash writes should be synced to disk.
+   *
+   * @param fsync whether or not flushes and hash writes should be synced to disk
+   */
+  void setFsync(boolean fsync);
+
+  /**
    * Set the hash type for all subsequent writeHash operations.
    * @param hashType choice of hash type, can be 32 or 64 bits.
    *                 if null, will use the default.

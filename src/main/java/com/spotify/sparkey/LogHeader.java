@@ -90,7 +90,7 @@ public final class LogHeader extends CommonHeader {
     }
   }
 
-  void write(File file) throws IOException {
+  void write(File file, boolean fsync) throws IOException {
     RandomAccessFile rw = new RandomAccessFile(file, "rw");
     rw.seek(0);
     Util.writeLittleEndianInt(MAGIC_NUMBER, rw);
@@ -110,6 +110,9 @@ public final class LogHeader extends CommonHeader {
 
     if (rw.getFilePointer() != HEADER_SIZE) {
       throw new RuntimeException("Programming error! Header size was incorrect, expected " + HEADER_SIZE + " but was " + rw.getFilePointer());
+    }
+    if (fsync) {
+      rw.getFD().sync();
     }
     rw.close();
   }
