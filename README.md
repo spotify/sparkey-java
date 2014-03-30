@@ -1,6 +1,11 @@
 This is the java version of sparkey. It's not a binding, but a full reimplementation.
 See [Sparkey](http://github.com/spotify/sparkey) for more documentation on how it works.
 
+### Travis
+Continuous integration with [travis](https://travis-ci.org/spotify/sparkey-java).
+
+[![Build Status](https://travis-ci.org/spotify/sparkey-java.svg?branch=master)](https://travis-ci.org/spotify/sparkey-java)
+
 ### Dependencies
 
 * Java 6 or higher
