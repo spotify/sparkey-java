@@ -27,7 +27,7 @@ final class LogWriter {
   private LogWriter(File file, CompressionType compressionType, int compressionBlockSize) throws IOException {
     this.file = file;
     header = new LogHeader(compressionType, compressionBlockSize);
-    header.write(file);
+    header.write(file, false);
     logStream = setup(header, file);
   }
 
@@ -46,8 +46,10 @@ final class LogWriter {
 
   private static BlockOutput setup(LogHeader header, File file) throws IOException {
     truncate(file, header.getDataEnd());
-    OutputStream stream = new BufferedOutputStream(new FileOutputStream(file, true), 1024 * 1024);
-    return header.getCompressionType().createBlockOutput(stream, header.getCompressionBlockSize(),
+    FileOutputStream fileOutputStream = new FileOutputStream(file, true);
+    FileDescriptor fd = fileOutputStream.getFD();
+    OutputStream stream = new BufferedOutputStream(fileOutputStream, 1024 * 1024);
+    return header.getCompressionType().createBlockOutput(fd, stream, header.getCompressionBlockSize(),
             header.getMaxEntriesPerBlock());
   }
 
@@ -68,18 +70,20 @@ final class LogWriter {
     return new LogWriter(file);
   }
 
-  void flush() throws IOException {
-    logStream.flush();
-    header.setMaxEntriesPerBlock(logStream.getMaxEntriesPerBlock());
-    header.setDataEnd(file.length());
-    header.write(file);
+  void flush(boolean fsync) throws IOException {
+    logStream.flush(fsync);
+    writeHeader(fsync);
   }
 
-  void close() throws IOException {
-    flush();
-    logStream.close();
+  private void writeHeader(boolean fsync) throws IOException {
+    header.setMaxEntriesPerBlock(logStream.getMaxEntriesPerBlock());
     header.setDataEnd(file.length());
-    header.write(file);
+    header.write(file, fsync);
+  }
+
+  void close(boolean fsync) throws IOException {
+    logStream.close(fsync);
+    writeHeader(fsync);
   }
 
   void put(String key, String value) throws IOException {

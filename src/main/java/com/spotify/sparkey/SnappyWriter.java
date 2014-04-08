@@ -34,8 +34,11 @@ public class SnappyWriter implements BlockOutput {
   }
 
   @Override
-  public void flush() throws IOException {
+  public void flush(boolean fsync) throws IOException {
     snappyOutputStream.flush();
+    if (fsync) {
+      snappyOutputStream.fsync();
+    }
   }
 
   @Override
@@ -82,9 +85,9 @@ public class SnappyWriter implements BlockOutput {
   private void smartFlush(int keySize, long totalSize) throws IOException {
     int remaining = snappyOutputStream.remaining();
     if (remaining < keySize) {
-      flush();
+      flush(false);
     } else if (remaining < totalSize && totalSize < maxBlockSize - remaining) {
-      flush();
+      flush(false);
     }
   }
 
@@ -107,8 +110,8 @@ public class SnappyWriter implements BlockOutput {
   }
 
   @Override
-  public void close() throws IOException {
-    flush();
+  public void close(boolean fsync) throws IOException {
+    flush(fsync);
     snappyOutputStream.close();
   }
 

@@ -15,6 +15,7 @@
  */
 package com.spotify.sparkey;
 
+import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -22,9 +23,11 @@ import java.io.OutputStream;
 final class UncompressedBlockOutput implements BlockOutput {
   private final byte[] buf = new byte[1024*1024];
   private final OutputStream outputStream;
+  private final FileDescriptor fileDescriptor;
 
-  UncompressedBlockOutput(OutputStream outputStream) {
+  UncompressedBlockOutput(OutputStream outputStream, FileDescriptor fileDescriptor) {
     this.outputStream = outputStream;
+    this.fileDescriptor = fileDescriptor;
   }
 
   @Override
@@ -51,12 +54,16 @@ final class UncompressedBlockOutput implements BlockOutput {
   }
 
   @Override
-  public void flush() throws IOException {
+  public void flush(boolean fsync) throws IOException {
     outputStream.flush();
+    if (fsync) {
+      fileDescriptor.sync();
+    }
   }
 
   @Override
-  public void close() throws IOException {
+  public void close(boolean fsync) throws IOException {
+    flush(fsync);
     outputStream.close();
   }
 

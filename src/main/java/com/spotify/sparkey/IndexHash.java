@@ -98,7 +98,7 @@ final class IndexHash {
     return i;
   }
 
-  static void createNew(File indexFile, File logFile, HashType hashType, double sparsity) throws IOException {
+  static void createNew(File indexFile, File logFile, HashType hashType, double sparsity, boolean fsync) throws IOException {
     if (sparsity < 1.3) {
       sparsity = 1.3;
     }
@@ -122,7 +122,7 @@ final class IndexHash {
     fillFromLog(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
             logHeader);
     calculateMaxDisplacement(header, indexData);
-    flushToFile(indexFile, header, indexData);
+    flushToFile(indexFile, header, indexData, fsync);
   }
 
   private static void calculateMaxDisplacement(IndexHeader header, InMemoryData indexData) throws IOException {
@@ -182,11 +182,15 @@ final class IndexHash {
     return logHeader.getDataEnd() <= (1L << (30 - entryBlockBits));
   }
 
-  private static void flushToFile(File file, IndexHeader header, InMemoryData data) throws IOException {
+  private static void flushToFile(File file, IndexHeader header, InMemoryData data, boolean fsync) throws IOException {
     FileOutputStream stream = new FileOutputStream(file);
     header.write(stream);
     try {
       data.flushToFile(stream);
+      stream.flush(); // Not needed for FileOutputStream, but still semantically correct
+      if (fsync) {
+        stream.getFD().sync();
+      }
     } finally {
       data.close();
       stream.close();

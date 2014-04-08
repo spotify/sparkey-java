@@ -15,6 +15,7 @@
  */
 package com.spotify.sparkey;
 
+import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -32,8 +33,8 @@ public enum CompressionType {
     }
 
     @Override
-    BlockOutput createBlockOutput(OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException {
-      return new UncompressedBlockOutput(outputStream);
+    BlockOutput createBlockOutput(FileDescriptor fd, OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException {
+      return new UncompressedBlockOutput(outputStream, fd);
     }
 
   },
@@ -50,12 +51,12 @@ public enum CompressionType {
     }
 
     @Override
-    BlockOutput createBlockOutput(OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException {
-      return new SnappyWriter(new SnappyOutputStream(maxBlockSize, outputStream), maxEntriesPerBlock);
+    BlockOutput createBlockOutput(FileDescriptor fd, OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException {
+      return new SnappyWriter(new SnappyOutputStream(maxBlockSize, outputStream, fd), maxEntriesPerBlock);
     }
   },;
 
-  abstract BlockOutput createBlockOutput(OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException;
+  abstract BlockOutput createBlockOutput(FileDescriptor fd, OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException;
 
   abstract BlockPositionedInputStream createBlockInput(InputStream inputStream, int maxBlockSize, long start);
 

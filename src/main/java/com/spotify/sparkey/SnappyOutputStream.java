@@ -17,8 +17,10 @@ package com.spotify.sparkey;
 
 import org.xerial.snappy.Snappy;
 
+import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.SyncFailedException;
 
 final class SnappyOutputStream extends OutputStream {
   private final int maxBlockSize;
@@ -26,10 +28,12 @@ final class SnappyOutputStream extends OutputStream {
 
   private final byte[] uncompressedBuffer;
   private final byte[] compressedBuffer;
+  private final FileDescriptor fileDescriptor;
   private int pending;
   private SnappyWriter listener = SnappyWriter.DUMMY;
 
-  SnappyOutputStream(int maxBlockSize, OutputStream output) throws IOException {
+  SnappyOutputStream(int maxBlockSize, OutputStream output, FileDescriptor fileDescriptor) throws IOException {
+    this.fileDescriptor = fileDescriptor;
     if (maxBlockSize < 10) {
       throw new IOException("Too small block size - won't be able to fit keylen + valuelen in a single block");
     }
@@ -51,6 +55,10 @@ final class SnappyOutputStream extends OutputStream {
     output.flush();
     pending = 0;
     listener.afterFlush();
+  }
+
+  public void fsync() throws SyncFailedException {
+    fileDescriptor.sync();
   }
 
   @Override
