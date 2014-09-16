@@ -147,10 +147,11 @@ final class ReadOnlyMemMap implements RandomAccessData {
       throw corruptionException();
     }
     MappedByteBuffer curChunk = chunks[curChunkIndex];
-    if (curChunk != null) {
-      curChunk.position(0);
-      this.curChunk = curChunk;
+    if (curChunk == null) {
+      throw new RuntimeException("chunk == null");
     }
+    curChunk.position(0);
+    this.curChunk = curChunk;
   }
 
   @Override
@@ -158,6 +159,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
     MappedByteBuffer curChunk = getCurChunk();
     if (curChunk.remaining() == 0) {
       next();
+      curChunk = getCurChunk();
     }
     return ((int) curChunk.get()) & 0xFF;
   }
