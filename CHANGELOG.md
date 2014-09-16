@@ -1,4 +1,8 @@
 #### 2.0.2
+* Fix bug which triggers a BufferUnderflowException in some rare cases.
+* Add support for using fsync in the writer.
+
+#### 2.0.2
 * Improve detection of corrupt files.
 * Fix file-descriptor leaks when closing readers and writers.
 * Use JMH for benchmarks.
