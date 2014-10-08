@@ -15,10 +15,11 @@
  */
 package com.spotify.sparkey;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 
-public interface SparkeyWriter {
+public interface SparkeyWriter extends Closeable {
   /**
    * Append the key/value pair to the writer, as UTF-8.
    */
