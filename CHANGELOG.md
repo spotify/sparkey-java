@@ -1,4 +1,7 @@
-#### 2.0.2
+#### UPCOMING
+* Make SparkeyReader and SparkeyWriter implement Closeable to support try-with-resources
+
+#### 2.0.3
 * Fix bug which triggers a BufferUnderflowException in some rare cases.
 * Add support for using fsync in the writer.
 

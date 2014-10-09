@@ -42,8 +42,6 @@ public interface SparkeyReader extends Iterable<SparkeyReader.Entry>, Closeable 
    */
   Entry getAsEntry(byte[] key) throws IOException;
 
-  void close() throws IOException;
-
   IndexHeader getIndexHeader();
   LogHeader getLogHeader();
 

@@ -55,6 +55,7 @@ public interface SparkeyWriter extends Closeable {
   /**
    * Flush and close the writer.
    */
+  @Override
   void close() throws IOException;
 
   /**
