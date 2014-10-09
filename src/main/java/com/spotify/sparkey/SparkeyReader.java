@@ -15,11 +15,12 @@
  */
 package com.spotify.sparkey;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 
-public interface SparkeyReader extends Iterable<SparkeyReader.Entry> {
+public interface SparkeyReader extends Iterable<SparkeyReader.Entry>, Closeable {
   /**
    * @param key the key to search for, interpreted as an UTF-8 string.
    * @return null if the key/value pair was not found, otherwise the value interpreted as an UTF-8 string.
