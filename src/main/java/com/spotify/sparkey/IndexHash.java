@@ -16,6 +16,7 @@
 package com.spotify.sparkey;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Throwables;
 import com.google.common.primitives.UnsignedLongs;
 
 import java.io.*;
@@ -73,14 +74,33 @@ final class IndexHash {
       throw new IOException("Corrupt index file '" + indexFile.toString() + "': referencing more data than exists in the log file");
     }
 
-    ReadOnlyMemMap indexData = new ReadOnlyMemMap(indexFile);
-    int maxBlockSize = logHeader.getCompressionBlockSize();
-    BlockRandomInput logData = logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile),
-            maxBlockSize);
+    ReadOnlyMemMap indexData = null;
+    BlockRandomInput logData = null;
+    IndexHash indexHash = null;
+    try {
+      int maxBlockSize = 0;
+      indexData = new ReadOnlyMemMap(indexFile);
+      maxBlockSize = logHeader.getCompressionBlockSize();
+      logData = logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile),
+              maxBlockSize);
 
-    IndexHash indexHash = new IndexHash(indexFile, logFile, header, logHeader, indexData, maxBlockSize, logData);
-    indexHash.validate();
-    return indexHash;
+      indexHash = new IndexHash(indexFile, logFile, header, logHeader, indexData, maxBlockSize, logData);
+      indexHash.validate();
+      return indexHash;
+    } catch (Exception e) {
+      if (indexHash != null) {
+        indexHash.close();
+      } else {
+        if (indexData != null) {
+          indexData.close();
+        }
+        if (logData != null) {
+          logData.close();
+        }
+      }
+      Throwables.propagateIfPossible(e, IOException.class);
+      throw Throwables.propagate(e);
+    }
   }
 
   private void validate() {
@@ -184,8 +204,8 @@ final class IndexHash {
 
   private static void flushToFile(File file, IndexHeader header, InMemoryData data, boolean fsync) throws IOException {
     FileOutputStream stream = new FileOutputStream(file);
-    header.write(stream);
     try {
+      header.write(stream);
       data.flushToFile(stream);
       stream.flush(); // Not needed for FileOutputStream, but still semantically correct
       if (fsync) {

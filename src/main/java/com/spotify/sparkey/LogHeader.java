@@ -92,29 +92,32 @@ public final class LogHeader extends CommonHeader {
 
   void write(File file, boolean fsync) throws IOException {
     RandomAccessFile rw = new RandomAccessFile(file, "rw");
-    rw.seek(0);
-    Util.writeLittleEndianInt(MAGIC_NUMBER, rw);
-    Util.writeLittleEndianInt(majorVersion, rw);
-    Util.writeLittleEndianInt(minorVersion, rw);
-    Util.writeLittleEndianInt(fileIdentifier, rw);
-    Util.writeLittleEndianLong(numPuts, rw);
-    Util.writeLittleEndianLong(numDeletes, rw);
-    Util.writeLittleEndianLong(dataEnd, rw);
-    Util.writeLittleEndianLong(maxKeyLen, rw);
-    Util.writeLittleEndianLong(maxValueLen, rw);
-    Util.writeLittleEndianLong(deleteSize, rw);
-    Util.writeLittleEndianInt(compressionType.ordinal(), rw);
-    Util.writeLittleEndianInt(compressionBlockSize, rw);
-    Util.writeLittleEndianLong(putSize, rw);
-    Util.writeLittleEndianInt(maxEntriesPerBlock, rw);
+    try {
+      rw.seek(0);
+      Util.writeLittleEndianInt(MAGIC_NUMBER, rw);
+      Util.writeLittleEndianInt(majorVersion, rw);
+      Util.writeLittleEndianInt(minorVersion, rw);
+      Util.writeLittleEndianInt(fileIdentifier, rw);
+      Util.writeLittleEndianLong(numPuts, rw);
+      Util.writeLittleEndianLong(numDeletes, rw);
+      Util.writeLittleEndianLong(dataEnd, rw);
+      Util.writeLittleEndianLong(maxKeyLen, rw);
+      Util.writeLittleEndianLong(maxValueLen, rw);
+      Util.writeLittleEndianLong(deleteSize, rw);
+      Util.writeLittleEndianInt(compressionType.ordinal(), rw);
+      Util.writeLittleEndianInt(compressionBlockSize, rw);
+      Util.writeLittleEndianLong(putSize, rw);
+      Util.writeLittleEndianInt(maxEntriesPerBlock, rw);
 
-    if (rw.getFilePointer() != HEADER_SIZE) {
-      throw new RuntimeException("Programming error! Header size was incorrect, expected " + HEADER_SIZE + " but was " + rw.getFilePointer());
+      if (rw.getFilePointer() != HEADER_SIZE) {
+        throw new RuntimeException("Programming error! Header size was incorrect, expected " + HEADER_SIZE + " but was " + rw.getFilePointer());
+      }
+      if (fsync) {
+        rw.getFD().sync();
+      }
+    } finally {
+      rw.close();
     }
-    if (fsync) {
-      rw.getFD().sync();
-    }
-    rw.close();
   }
 
   public int getMajorVersion() {

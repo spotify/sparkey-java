@@ -15,6 +15,7 @@
  */
 package com.spotify.sparkey;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 
 import java.io.File;
@@ -60,31 +61,37 @@ final class ReadOnlyMemMap implements RandomAccessData {
     this.allInstances.add(this);
 
     this.randomAccessFile = new RandomAccessFile(file, "r");
-    this.size = file.length();
-    if (size <= 0) {
-      throw new IllegalArgumentException("Non-positive size: " + size);
-    }
-    long numFullMaps = (size - 1) >> 30;
-    if (numFullMaps >= Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("Too large size: " + size);
-    }
-    long sizeFullMaps = numFullMaps * MAP_SIZE;
+    try {
+      this.size = file.length();
+      if (size <= 0) {
+        throw new IllegalArgumentException("Non-positive size: " + size);
+      }
+      long numFullMaps = (size - 1) >> 30;
+      if (numFullMaps >= Integer.MAX_VALUE) {
+        throw new IllegalArgumentException("Too large size: " + size);
+      }
+      long sizeFullMaps = numFullMaps * MAP_SIZE;
 
-    numChunks = (int) (numFullMaps + 1);
-    chunks = new MappedByteBuffer[numChunks];
-    long offset = 0;
-    for (int i = 0; i < numFullMaps; i++) {
-      chunks[i] = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, offset, MAP_SIZE);
-      offset += MAP_SIZE;
-    }
-    long lastSize = size - sizeFullMaps;
-    if (lastSize > 0) {
-      chunks[numChunks - 1] = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, offset, lastSize);
-    }
+      numChunks = (int) (numFullMaps + 1);
+      chunks = new MappedByteBuffer[numChunks];
+      long offset = 0;
+      for (int i = 0; i < numFullMaps; i++) {
+        chunks[i] = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, offset, MAP_SIZE);
+        offset += MAP_SIZE;
+      }
+      long lastSize = size - sizeFullMaps;
+      if (lastSize > 0) {
+        chunks[numChunks - 1] = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, offset, lastSize);
+      }
 
-    curChunkIndex = 0;
-    curChunk = chunks[0];
-    curChunk.position(0);
+      curChunkIndex = 0;
+      curChunk = chunks[0];
+      curChunk.position(0);
+    } catch (Exception e) {
+      this.randomAccessFile.close();
+      Throwables.propagateIfPossible(e, IOException.class);
+      throw Throwables.propagate(e);
+    }
   }
 
   private ReadOnlyMemMap(ReadOnlyMemMap source, MappedByteBuffer[] chunks) {
