@@ -197,7 +197,7 @@ final class IndexHash {
     }
   }
 
-  void close() throws IOException {
+  void close() {
     this.indexData.close();
     this.logData.close();
   }
@@ -647,9 +647,13 @@ final class IndexHash {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
       stream.close();
-      super.close();
+      try {
+        super.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
 
     @Override

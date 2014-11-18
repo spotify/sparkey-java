@@ -53,7 +53,7 @@ public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     this.threadLocalReader = null;
     synchronized (readers) {
       for (SparkeyReader reader : readers) {

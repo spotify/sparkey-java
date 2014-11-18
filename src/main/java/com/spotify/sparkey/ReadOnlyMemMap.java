@@ -109,11 +109,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
       for (ReadOnlyMemMap map : allInstances) {
         map.chunks = null;
         map.curChunk = null;
-        try {
-          map.randomAccessFile.close();
-        } catch (IOException e) {
-          e.printStackTrace(System.err);
-        }
+        Util.nonThrowingClose(map.randomAccessFile);
       }
     }
     // Wait a bit with closing so that all threads have a chance to see the that

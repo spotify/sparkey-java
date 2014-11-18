@@ -262,4 +262,12 @@ final class Util {
     }
     return true;
   }
+
+  static void nonThrowingClose(Closeable stream) {
+    try {
+      stream.close();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 }
