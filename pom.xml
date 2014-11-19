@@ -15,7 +15,7 @@
 
   <scm>
     <connection>scm:git:https://github.com/spotify/sparkey-java.git</connection>
-    <developerConnection>scm:git:https://github.com/spotify/sparkey-java.git</developerConnection>
+    <developerConnection>scm:git:git@github.com:spotify/sparkey-java.git</developerConnection>
     <url>scm:https://github.com/spotify/sparkey-java/</url>
   </scm>
 
