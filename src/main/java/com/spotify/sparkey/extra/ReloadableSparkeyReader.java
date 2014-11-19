@@ -125,11 +125,7 @@ public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
     log.info("loaded sparkey index {}, {} keys", logFile.getAbsolutePath(), keys);
 
     if (toClose != null) {
-      try {
-        toClose.close();
-      } catch (IOException ex) {
-        throw new ReloadableSparkeyReaderException("couldn't close readable", ex);
-      }
+      toClose.close();
     }
   }
 

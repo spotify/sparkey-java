@@ -91,7 +91,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
             entry.stream.skipRemaining();
             pos = stream.getBlockPosition();
             if (pos >= end) {
-              stream.close();
+              Util.nonThrowingClose(stream);
               return false;
             }
             if (pos == prevPos) {
@@ -111,7 +111,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
             try {
               first = Util.readUnsignedVLQInt(stream);
             } catch (EOFException e) {
-              stream.close();
+              Util.nonThrowingClose(stream);
               return false;
             }
             int second = Util.readUnsignedVLQInt(stream);
@@ -132,11 +132,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
             ready = true;
             return true;
           } catch (IOException e) {
-            try {
-              stream.close();
-            } catch (IOException e1) {
-              throw new RuntimeException(e1);
-            }
+            Util.nonThrowingClose(stream);
             throw new RuntimeException(e);
           }
         }
@@ -314,9 +310,13 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
     }
 
     @Override
-    public void close() throws IOException {
-      stream.close();
-      super.close();
+    public void close() {
+      try {
+        stream.close();
+        super.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
 
     @Override

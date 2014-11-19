@@ -51,6 +51,10 @@ public interface SparkeyReader extends Iterable<SparkeyReader.Entry>, Closeable 
    */
   SparkeyReader duplicate();
 
+  // Deliberately override to avoid throwing IOException
+  @Override
+  void close();
+
   /**
    * Get an iterator over all the live entries.
    *

@@ -48,7 +48,7 @@ public abstract class AbstractDelegatingSparkeyReader implements SparkeyReader {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     getDelegateReader().close();
   }
 
