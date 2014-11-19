@@ -1,4 +1,6 @@
-#### UPCOMING
+#### 2.1.0
+* Always close files in case of exceptions upon creation.
+* Removed IOExceptions for close() for reader types
 * Make SparkeyReader and SparkeyWriter implement Closeable to support try-with-resources
 
 #### 2.0.3
