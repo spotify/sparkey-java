@@ -129,10 +129,17 @@ public final class Sparkey {
   }
 
   private static File setEnding(File file, String ending) {
-    if (file.getName().endsWith(ending)) {
+    String fileName = file.getName();
+    if (fileName.endsWith(ending)) {
       return file;
     }
-    return new File(file.getParentFile(), changeEnding(file.getName(), ending));
+    if (fileName.endsWith(".spi") || fileName.endsWith(".spl")) {
+      return new File(file.getParentFile(), changeEnding(fileName, ending));
+    }
+    if (fileName.endsWith(".")) {
+      return new File(file.getParentFile(), fileName.substring(0, fileName.length() - 1) + ending);
+    }
+    return new File(file.getParentFile(), fileName + ending);
   }
 
   private static String changeEnding(String s, String ending) {
