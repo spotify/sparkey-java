@@ -1,3 +1,6 @@
+#### 2.1.1
+* Fix minor bug related to generating filenames.
+
 #### 2.1.0
 * Always close files in case of exceptions upon creation.
 * Removed IOExceptions for close() for reader types
