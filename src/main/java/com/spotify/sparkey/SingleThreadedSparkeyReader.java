@@ -28,6 +28,10 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
   private final IndexHeader header;
   private final LogHeader logHeader;
 
+  // This should probably be volatile to better detect problems,
+  // but we're trying to optimistically detect problems without too much overhead
+  private int activeThreads;
+  
   private SingleThreadedSparkeyReader(File indexFile, File logFile) throws IOException {
     this(indexFile, logFile, IndexHash.open(indexFile, logFile));
   }
@@ -75,7 +79,14 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
 
   @Override
   public SparkeyReader.Entry getAsEntry(byte[] key) throws IOException {
-    return index.get(key.length, key);
+    try {
+      if (activeThreads++ != 0) {
+        throw new IllegalStateException("SingleThreadedSparkeyReader may not be used concurrently");
+      }
+      return index.get(key.length, key);
+    } finally {
+      activeThreads--;
+    }
   }
 
 
@@ -99,39 +110,56 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
     return new Iterator<SparkeyReader.Entry>() {
       private SparkeyReader.Entry entry;
       private boolean ready;
+      private int activeThreads;
 
       public boolean hasNext() {
         if (ready) {
           return true;
         }
-        while (iterator.hasNext()) {
-          // Safe cast, since the iterator is guaranteed to be a SparkeyLogIterator
-          SparkeyLogIterator.Entry next = (SparkeyLogIterator.Entry) iterator.next();
+        try {
+          incr();
+          while (iterator.hasNext()) {
+            // Safe cast, since the iterator is guaranteed to be a SparkeyLogIterator
+            SparkeyLogIterator.Entry next = (SparkeyLogIterator.Entry) iterator.next();
 
-          if (next.getType() == SparkeyReader.Type.PUT) {
-            int keyLen = next.getKeyLength();
-            try {
-              if (isValid(keyLen, next.getKeyBuf(), next.getPosition(), next.getEntryIndex(), indexHash)) {
-                entry = next;
-                ready = true;
-                return true;
+            if (next.getType() == SparkeyReader.Type.PUT) {
+              int keyLen = next.getKeyLength();
+              try {
+                if (isValid(keyLen, next.getKeyBuf(), next.getPosition(), next.getEntryIndex(), indexHash)) {
+                  entry = next;
+                  ready = true;
+                  return true;
+                }
+              } catch (IOException e) {
+                throw new RuntimeException(e);
               }
-            } catch (IOException e) {
-              throw new RuntimeException(e);
             }
           }
+          return false;
+        } finally {
+          activeThreads--;
         }
-        return false;
       }
 
       public Entry next() {
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
-        ready = false;
-        Entry localEntry = entry;
-        entry = null;
-        return localEntry;
+        try {
+          incr();
+          ready = false;
+          Entry localEntry = entry;
+          entry = null;
+          return localEntry;
+        } finally {
+          activeThreads--;
+        }
+      }
+
+      private void incr() {
+        if (activeThreads++ != 0) {
+          throw new IllegalStateException("SingleThreadedSparkeyReader may not be used concurrently");
+        }
       }
 
       public void remove() {
