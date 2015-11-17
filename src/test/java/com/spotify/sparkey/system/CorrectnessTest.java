@@ -135,6 +135,20 @@ public class CorrectnessTest extends BaseSystemTest {
     }
     reader.close();
   }
+  
+  @Test
+  public void testAppendedPut() throws IOException {
+    for (int i = 0; i <2; i++) {
+      SparkeyWriter writer = Sparkey.appendOrCreate(indexFile, CompressionType.NONE, 40);
+      writer.put("Key" + i, "Value" + i);
+      writer.flush();
+      writer.writeHash();
+      writer.close();
+    }
+    SparkeyReader reader = Sparkey.open(indexFile);
+    assertEquals("Value1", reader.getAsString("Key1"));
+    reader.close();
+  }
 
   @Test
   public void testWithDeletes() throws IOException {
