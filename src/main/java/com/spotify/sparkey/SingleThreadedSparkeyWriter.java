@@ -86,11 +86,29 @@ final class SingleThreadedSparkeyWriter implements SparkeyWriter {
 
     File parentFile = indexFile.getCanonicalFile().getParentFile();
     File newFile = new File(parentFile, indexFile.getName() + "-tmp" + System.currentTimeMillis());
+
     try {
       IndexHash.createNew(newFile, logFile, hashType, sparsity, fsync);
       boolean successful = newFile.renameTo(indexFile);
       if (!successful) {
-        throw new IOException("Could not rename " + newFile + " to " + indexFile);
+        if (indexFile.exists()) {
+          // On some platforms (windows 7) rename fails if destination exists
+          File backupFile = new File(parentFile, indexFile.getName() + "-backup" + System.currentTimeMillis());
+          if (indexFile.renameTo(backupFile)) {
+            if (newFile.renameTo(indexFile)) { //try renaming again
+              // dont need backup file
+              backupFile.delete();
+            } else {
+              // failed again - roll back to original index filename
+              backupFile.renameTo(indexFile); // keep backup file even if this rename fails
+              throw new IOException("Could not rename " + newFile + " to " + indexFile);
+            }
+          } else {
+            throw new IOException("Could not rename " + indexFile + " to " + backupFile);
+          }
+        } else {
+          throw new IOException("Could not rename " + newFile + " to " + indexFile);
+        }
       }
     } finally {
       boolean deleted = newFile.delete();
