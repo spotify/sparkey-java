@@ -89,7 +89,7 @@ final class SingleThreadedSparkeyWriter implements SparkeyWriter {
     File newFile = new File(parentFile, indexFile.getName() + "-tmp" + UUID.randomUUID().toString());
     try {
       IndexHash.createNew(newFile, logFile, hashType, sparsity, fsync);
-      boolean successful = newFile.renameTo(indexFile);
+      boolean successful = Util.renameFile(newFile, indexFile);
       if (!successful) {
         throw new IOException("Could not rename " + newFile + " to " + indexFile);
       }
