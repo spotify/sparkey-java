@@ -1,3 +1,6 @@
+#### 2.1.2
+* Fix bug with replacing files on Windows systems.
+
 #### 2.1.1
 * Fix minor bug related to generating filenames.
 
