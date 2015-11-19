@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.UUID;
 
 final class SingleThreadedSparkeyWriter implements SparkeyWriter {
   private final LogWriter logWriter;
@@ -85,10 +86,10 @@ final class SingleThreadedSparkeyWriter implements SparkeyWriter {
     flush();
 
     File parentFile = indexFile.getCanonicalFile().getParentFile();
-    File newFile = new File(parentFile, indexFile.getName() + "-tmp" + System.currentTimeMillis());
+    File newFile = new File(parentFile, indexFile.getName() + "-tmp" + UUID.randomUUID().toString());
     try {
       IndexHash.createNew(newFile, logFile, hashType, sparsity, fsync);
-      boolean successful = newFile.renameTo(indexFile);
+      boolean successful = Util.renameFile(newFile, indexFile);
       if (!successful) {
         throw new IOException("Could not rename " + newFile + " to " + indexFile);
       }

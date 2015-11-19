@@ -1,12 +1,20 @@
 package com.spotify.sparkey;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Tests Util
@@ -15,33 +23,33 @@ public class UtilTest {
 
   @Test
   public void testUnsignedByte() {
-    Assert.assertEquals(0, Util.unsignedByte((byte)0));
-    Assert.assertEquals(127, Util.unsignedByte((byte)127));
-    Assert.assertEquals(128, Util.unsignedByte((byte)-128));
-    Assert.assertEquals(128, Util.unsignedByte((byte)128));
-    Assert.assertEquals(255, Util.unsignedByte((byte)-1));
+    assertEquals(0, Util.unsignedByte((byte) 0));
+    assertEquals(127, Util.unsignedByte((byte) 127));
+    assertEquals(128, Util.unsignedByte((byte) -128));
+    assertEquals(128, Util.unsignedByte((byte) 128));
+    assertEquals(255, Util.unsignedByte((byte) -1));
   }
 
   @Test
   public void testUnsignedVLQSize() {
-    Assert.assertEquals(1, Util.unsignedVLQSize(1L << 4));
-    Assert.assertEquals(1, Util.unsignedVLQSize(1 << 6));
-    Assert.assertEquals(2, Util.unsignedVLQSize(1L << 7));
-    Assert.assertEquals(2, Util.unsignedVLQSize(1 << 13));
-    Assert.assertEquals(3, Util.unsignedVLQSize(1L << 14));
-    Assert.assertEquals(3, Util.unsignedVLQSize(1 << 20));
-    Assert.assertEquals(4, Util.unsignedVLQSize(1L << 21));
-    Assert.assertEquals(4, Util.unsignedVLQSize(1 << 27));
-    Assert.assertEquals(5, Util.unsignedVLQSize(1 << 28));
-    Assert.assertEquals(5, Util.unsignedVLQSize(1L << 34));
-    Assert.assertEquals(6, Util.unsignedVLQSize(1L << 35));
-    Assert.assertEquals(6, Util.unsignedVLQSize(1L << 41));
-    Assert.assertEquals(7, Util.unsignedVLQSize(1L << 42));
-    Assert.assertEquals(7, Util.unsignedVLQSize(1L << 48));
-    Assert.assertEquals(8, Util.unsignedVLQSize(1L << 49));
-    Assert.assertEquals(8, Util.unsignedVLQSize(1L << 55));
-    Assert.assertEquals(9, Util.unsignedVLQSize(1L << 56));
-    Assert.assertEquals(9, Util.unsignedVLQSize(Long.MAX_VALUE));
+    assertEquals(1, Util.unsignedVLQSize(1L << 4));
+    assertEquals(1, Util.unsignedVLQSize(1 << 6));
+    assertEquals(2, Util.unsignedVLQSize(1L << 7));
+    assertEquals(2, Util.unsignedVLQSize(1 << 13));
+    assertEquals(3, Util.unsignedVLQSize(1L << 14));
+    assertEquals(3, Util.unsignedVLQSize(1 << 20));
+    assertEquals(4, Util.unsignedVLQSize(1L << 21));
+    assertEquals(4, Util.unsignedVLQSize(1 << 27));
+    assertEquals(5, Util.unsignedVLQSize(1 << 28));
+    assertEquals(5, Util.unsignedVLQSize(1L << 34));
+    assertEquals(6, Util.unsignedVLQSize(1L << 35));
+    assertEquals(6, Util.unsignedVLQSize(1L << 41));
+    assertEquals(7, Util.unsignedVLQSize(1L << 42));
+    assertEquals(7, Util.unsignedVLQSize(1L << 48));
+    assertEquals(8, Util.unsignedVLQSize(1L << 49));
+    assertEquals(8, Util.unsignedVLQSize(1L << 55));
+    assertEquals(9, Util.unsignedVLQSize(1L << 56));
+    assertEquals(9, Util.unsignedVLQSize(Long.MAX_VALUE));
   }
 
   @Test
@@ -71,7 +79,7 @@ public class UtilTest {
   @Test
   public void testReadByte() throws Exception {
     ByteArrayInputStream bais = new ByteArrayInputStream(new byte[] {(byte)0x00});
-    Assert.assertEquals((byte) 0x00, Util.readByte(bais));
+    assertEquals((byte) 0x00, Util.readByte(bais));
     try {
       Util.readByte(bais);
       Assert.fail("Should have thrown EOFException");
@@ -90,8 +98,8 @@ public class UtilTest {
 
   @Test
   public void testEquals() throws Exception {
-    Assert.assertTrue(Util.equals(3, "apa".getBytes(), "apa".getBytes()));
-    Assert.assertFalse(Util.equals(3, "apa".getBytes(), "foo".getBytes()));
+    assertTrue(Util.equals(3, "apa".getBytes(), "apa".getBytes()));
+    assertFalse(Util.equals(3, "apa".getBytes(), "foo".getBytes()));
   }
 
   @Test
@@ -110,8 +118,8 @@ public class UtilTest {
 
   private void checkVLQ(int i, byte[] bytes) {
     try {
-      Assert.assertEquals(i, Util.readUnsignedVLQInt(new ByteArrayInputStream(bytes)));
-      Assert.assertEquals(i, Util.readUnsignedVLQInt(new DummyBlockRandomInput(bytes)));
+      assertEquals(i, Util.readUnsignedVLQInt(new ByteArrayInputStream(bytes)));
+      assertEquals(i, Util.readUnsignedVLQInt(new DummyBlockRandomInput(bytes)));
     } catch (IOException e) {
       throw new Error(e);
     }
@@ -154,6 +162,58 @@ public class UtilTest {
     @Override
     public BlockRandomInput duplicate() {
       throw new UnsupportedOperationException();
+    }
+  }
+
+  @Test
+  public void testRenameDestExists() throws Exception {
+    File src = new File("dummy-file-src");
+    File dest = new File("dummy-file-dest");
+
+    try {
+      FileUtils.write(src, "src");
+      FileUtils.write(dest, "dest");
+
+      assertEquals("src", FileUtils.readFileToString(src));
+      assertEquals("dest", FileUtils.readFileToString(dest));
+
+      Util.renameFile(src, dest);
+
+      assertFalse(src.exists());
+      assertEquals("src", FileUtils.readFileToString(dest));
+    } finally {
+      src.delete();
+      dest.delete();
+    }
+  }
+
+  @Test
+  public void testRenameSameFile() throws Exception {
+    File src = new File("dummy-file-src");
+    File dest = new File("dummy-file-src");
+
+    try {
+      FileUtils.write(src, "src");
+      Util.renameFile(src, dest);
+      assertTrue(src.exists());
+      assertEquals("src", FileUtils.readFileToString(src));
+    } finally {
+      src.delete();
+      dest.delete();
+    }
+  }
+
+  @Test(expected = FileNotFoundException.class)
+  public void testRenameFileDoesNotExist() throws Exception {
+    File src = new File("dummy-file-src");
+    File dest = new File("dummy-file-dest");
+
+    try {
+      Util.renameFile(src, dest);
+      fail();
+    } finally {
+      src.delete();
+      dest.delete();
     }
   }
 }

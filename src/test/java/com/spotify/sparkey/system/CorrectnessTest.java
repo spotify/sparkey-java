@@ -15,7 +15,13 @@
  */
 package com.spotify.sparkey.system;
 
-import com.spotify.sparkey.*;
+import com.spotify.sparkey.CompressionType;
+import com.spotify.sparkey.HashType;
+import com.spotify.sparkey.Sparkey;
+import com.spotify.sparkey.SparkeyLogIterator;
+import com.spotify.sparkey.SparkeyReader;
+import com.spotify.sparkey.SparkeyWriter;
+
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -133,6 +139,20 @@ public class CorrectnessTest extends BaseSystemTest {
       }
       assertEquals("Value" + i, entry.getValueAsString());
     }
+    reader.close();
+  }
+
+  @Test
+  public void testAppendedPut() throws IOException {
+    for (int i = 0; i <2; i++) {
+      SparkeyWriter writer = Sparkey.appendOrCreate(indexFile, CompressionType.NONE, 40);
+      writer.put("Key" + i, "Value" + i);
+      writer.flush();
+      writer.writeHash();
+      writer.close();
+    }
+    SparkeyReader reader = Sparkey.open(indexFile);
+    assertEquals("Value1", reader.getAsString("Key1"));
     reader.close();
   }
 

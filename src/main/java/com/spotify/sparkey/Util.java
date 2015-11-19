@@ -15,9 +15,22 @@
  */
 package com.spotify.sparkey;
 
-import java.io.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.Closeable;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.util.UUID;
 
 final class Util {
+  private static final Logger log = LoggerFactory.getLogger(Util.class);
+
   static int unsignedByte(byte b) {
     return ((int) b) & 0xFF;
   }
@@ -269,5 +282,43 @@ final class Util {
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  static boolean renameFile(File srcFile, File destFile) throws FileNotFoundException {
+    if (!srcFile.exists()) {
+      throw new FileNotFoundException(srcFile.getPath());
+    }
+    if (srcFile.equals(destFile)) {
+      return true;
+    }
+    if (!destFile.exists()) {
+      return srcFile.renameTo(destFile);
+    }
+
+    File backupFile = new File(destFile.getParent(), destFile.getName() + "-backup" + UUID.randomUUID().toString());
+    if (backupFile.exists()) {
+      // Edge case, but let's be safe.
+      log.warn("Expected duplicate temporary backup file: " + backupFile.getPath());
+      return false;
+    }
+    if (!destFile.renameTo(backupFile)) {
+      return false;
+    }
+    if (destFile.exists()) {
+      // This is strange, it should be renamed by now. But let's be safe.
+      log.warn("Unexpected file still existing: {}, should have been renamed to: {}", destFile.getPath(), backupFile.getPath());
+      return false;
+    }
+
+    if (srcFile.renameTo(destFile)) {
+      boolean deleted = backupFile.delete();
+      return true;
+    }
+
+    // roll back failed rename
+    if (!backupFile.renameTo(destFile)) {
+      log.warn("Failed to roll back failed rename - file still exists: {}", backupFile);
+    }
+    return false;
   }
 }
