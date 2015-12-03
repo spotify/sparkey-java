@@ -1,3 +1,3 @@
 mvn clean package
-java -jar target/microbenchmark.jar
+java -jar target/microbenchmarks.jar
 
