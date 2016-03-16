@@ -1,3 +1,6 @@
+#### 2.1.3
+* Update snappy dependency
+
 #### 2.1.2
 * Fix bug with replacing files on Windows systems.
 
