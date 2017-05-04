@@ -1,4 +1,4 @@
-package com.spotify.sparkey;
+package com.spotify.sparkey.cleaner;
 
 import java.io.IOException;
 import java.lang.reflect.Method;

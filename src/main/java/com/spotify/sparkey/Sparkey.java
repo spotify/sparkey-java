@@ -15,6 +15,8 @@
  */
 package com.spotify.sparkey;
 
+import com.spotify.sparkey.cleaner.MappedByteBufferCleaner;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -167,5 +169,9 @@ public final class Sparkey {
    */
   public static LogHeader getLogHeader(File file) throws IOException {
     return LogHeader.read(file);
+  }
+
+  public static void setMappedByteBufferCleaner(MappedByteBufferCleaner cleaner) {
+    ReadOnlyMemMap.setCleaner(cleaner);
   }
 }

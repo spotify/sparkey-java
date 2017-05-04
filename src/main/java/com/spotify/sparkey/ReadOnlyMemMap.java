@@ -17,6 +17,8 @@ package com.spotify.sparkey;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
+import com.spotify.sparkey.cleaner.MappedByteBufferCleaner;
+import com.spotify.sparkey.cleaner.SingleThreadedCleanerWithWait;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,21 +26,9 @@ import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 
 final class ReadOnlyMemMap implements RandomAccessData {
-  private static final ScheduledExecutorService CLEANER = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
-    @Override
-    public Thread newThread(Runnable r) {
-      Thread thread = new Thread(r);
-      thread.setName(ReadOnlyMemMap.class.getSimpleName() + "-cleaner");
-      thread.setDaemon(true);
-      return thread;
-    }
-  });
+  private static MappedByteBufferCleaner CLEANER = new SingleThreadedCleanerWithWait();
 
   private static final long MAP_SIZE = 1 << 30;
   private static final long BITMASK_30 = ((1L << 30) - 1);
@@ -119,16 +109,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
         Util.nonThrowingClose(map.randomAccessFile);
       }
     }
-    // Wait a bit with closing so that all threads have a chance to see the that
-    // chunks and curChunks are null
-    CLEANER.schedule(new Runnable() {
-      @Override
-      public void run() {
-        for (MappedByteBuffer chunk : chunks) {
-          ByteBufferCleaner.cleanMapping(chunk);
-        }
-      }
-    }, 1000, TimeUnit.MILLISECONDS);
+    CLEANER.cleanup(chunks);
   }
 
   public void seek(long pos) throws IOException {
@@ -239,6 +220,10 @@ final class ReadOnlyMemMap implements RandomAccessData {
             ", randomAccessFile=" + randomAccessFile +
             ", size=" + size +
             '}';
+  }
+
+  public static void setCleaner(MappedByteBufferCleaner cleaner) {
+    CLEANER = cleaner;
   }
 
 }
