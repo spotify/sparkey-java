@@ -15,6 +15,7 @@
  */
 package com.spotify.sparkey;
 
+import com.spotify.sparkey.extra.ThreadLocalSparkeyReader;
 import java.io.File;
 import java.io.IOException;
 
@@ -76,6 +77,28 @@ public final class Sparkey {
   }
 
   /**
+   * Open a new, thread-safe, sparkey reader
+   *
+   *
+   * @param file File base to use, the actual file endings will be set to .spi and .spl
+   * @return a new reader,
+   */
+  public static SparkeyReader open(File file) throws IOException {
+    return new ThreadLocalSparkeyReader(file);
+  }
+
+  /**
+   * Open a new, thread-safe, sparkey reader
+   *
+   *
+   * @param file File base to use, the actual file endings will be set to .spi and .spl
+   * @return a new reader,
+   */
+  public static SparkeyReader openThreadLocalReader(File file) throws IOException {
+    return new ThreadLocalSparkeyReader(file);
+  }
+
+  /**
    * Open a new sparkey reader
    *
    * This is not a thread-safe class, only use it from one thread.
@@ -83,7 +106,7 @@ public final class Sparkey {
    * @param file File base to use, the actual file endings will be set to .spi and .spl
    * @return a new reader,
    */
-  public static SparkeyReader open(File file) throws IOException {
+  public static SparkeyReader openSingleThreadedReader(File file) throws IOException {
     return SingleThreadedSparkeyReader.open(file);
   }
 
