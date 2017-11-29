@@ -33,7 +33,7 @@ public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
   private volatile ThreadLocal<SparkeyReader> threadLocalReader;
 
   public ThreadLocalSparkeyReader(File indexFile) throws IOException {
-    this(Sparkey.open(indexFile));
+    this(Sparkey.openSingleThreadReader(indexFile));
   }
 
   public ThreadLocalSparkeyReader(final SparkeyReader reader) {
