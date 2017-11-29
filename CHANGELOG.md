@@ -1,3 +1,6 @@
+#### 2.2.0
+* Make Sparkey.open return a thread local (i.e. thread safe) reader by default.
+
 #### 2.1.3
 * Update snappy dependency
 
