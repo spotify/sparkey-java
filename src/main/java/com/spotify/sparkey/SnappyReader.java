@@ -67,6 +67,16 @@ final class SnappyReader extends BlockPositionedInputStream {
 
   @Override
   public int read(byte[] b, int off, int len) throws IOException {
+    int remain = len;
+    while (remain > 0) {
+      int didRead = readImpl(b, off, remain);
+      off += didRead;
+      remain -= didRead;
+    }
+    return len;
+  }
+
+  private int readImpl(byte[] b, int off, int len) throws IOException {
     int available = available();
     if (len <= available) {
       System.arraycopy(uncompressedBuf, bufPos, b, off, len);
@@ -76,13 +86,20 @@ final class SnappyReader extends BlockPositionedInputStream {
       System.arraycopy(uncompressedBuf, bufPos, b, off, available);
       bufPos = blockSize;
       fetchBlock();
-      read(b, off + available, len - available);
-      return len;
+      return available;
     }
   }
 
   @Override
   public long skip(long n) throws IOException {
+    long remain = n;
+    while (remain > 0) {
+      remain -= skipImpl(remain);
+    }
+    return n;
+  }
+
+  private long skipImpl(long n) throws IOException {
     int available = available();
     if (n <= available) {
       bufPos += n;
@@ -90,8 +107,7 @@ final class SnappyReader extends BlockPositionedInputStream {
     } else {
       bufPos = blockSize;
       fetchBlock();
-      skip(n - available);
-      return n;
+      return available;
     }
   }
 
