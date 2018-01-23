@@ -74,15 +74,24 @@ final class SnappyOutputStream extends OutputStream {
 
   @Override
   public void write(byte[] b, int off, int len) throws IOException {
+    while (len > 0) {
+      int written = writeImpl(b, off, len);
+      off += written;
+      len -= written;
+    }
+  }
+
+  private int writeImpl(byte[] b, int off, int len) throws IOException {
     int remaining = remaining();
     if (len < remaining) {
       System.arraycopy(b, off, uncompressedBuffer, pending, len);
       pending += len;
+      return len;
     } else {
       System.arraycopy(b, off, uncompressedBuffer, pending, remaining);
       pending = maxBlockSize;
       flush();
-      write(b, off + remaining, len - remaining);
+      return remaining;
     }
   }
 
