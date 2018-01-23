@@ -1,3 +1,6 @@
+#### 2.2.1
+* Minor bug fix to avoid stack overflow for large read and write operations.
+
 #### 2.2.0
 * Make Sparkey.open return a thread local (i.e. thread safe) reader by default.
 
