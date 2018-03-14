@@ -15,6 +15,7 @@
  */
 package com.spotify.sparkey;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 
 public enum HashType {
@@ -27,6 +28,11 @@ public enum HashType {
     @Override
     void writeHash(long hash, ReadWriteData data) throws IOException {
       Util.writeLittleEndianLong(hash, data);
+    }
+
+    @Override
+    void writeHash(final long hash, final DataOutputStream data) throws IOException {
+      data.writeLong(hash);
     }
 
     @Override
@@ -43,6 +49,11 @@ public enum HashType {
     @Override
     void writeHash(long hash, ReadWriteData data) throws IOException {
       Util.writeLittleEndianInt((int) hash, data);
+    }
+
+    @Override
+    void writeHash(final long hash, final DataOutputStream data) throws IOException {
+      data.writeInt((int) hash);
     }
 
     @Override
@@ -63,6 +74,7 @@ public enum HashType {
   abstract long readHash(RandomAccessData data) throws IOException;
 
   abstract void writeHash(long hash, ReadWriteData data) throws IOException;
+  abstract void writeHash(long hash, DataOutputStream data) throws IOException;
 
   abstract long hash(int keyLen, byte[] key, int seed);
 

@@ -33,7 +33,7 @@ import java.util.NoSuchElementException;
  */
 public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
   private final File logFile;
-  private final LogHeader header;
+  final LogHeader header;
   private final long start;
   private final long end;
 

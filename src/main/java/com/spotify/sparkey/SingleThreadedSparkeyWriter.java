@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Random;
 import java.util.UUID;
 
 final class SingleThreadedSparkeyWriter implements SparkeyWriter {
@@ -28,6 +29,7 @@ final class SingleThreadedSparkeyWriter implements SparkeyWriter {
   private double sparsity;
   private HashType hashType;
   private boolean fsync;
+  private int hashSeed;
 
   private SingleThreadedSparkeyWriter(File indexFile, LogWriter logWriter) {
     this.logFile = logWriter.getFile();
@@ -88,7 +90,11 @@ final class SingleThreadedSparkeyWriter implements SparkeyWriter {
     File parentFile = indexFile.getCanonicalFile().getParentFile();
     File newFile = new File(parentFile, indexFile.getName() + "-tmp" + UUID.randomUUID().toString());
     try {
-      IndexHash.createNew(newFile, logFile, hashType, sparsity, fsync);
+      int hashSeed = this.hashSeed;
+      if (hashSeed == 0) {
+        hashSeed = new Random().nextInt();
+      }
+      IndexHash.createNew(newFile, logFile, hashType, sparsity, fsync, hashSeed);
       boolean successful = Util.renameFile(newFile, indexFile);
       if (!successful) {
         throw new IOException("Could not rename " + newFile + " to " + indexFile);
@@ -116,6 +122,11 @@ final class SingleThreadedSparkeyWriter implements SparkeyWriter {
   @Override
   public void setHashSparsity(double sparsity) {
     this.sparsity = sparsity;
+  }
+
+  @Override
+  public void setHashSeed(final int hashSeed) {
+    this.hashSeed = hashSeed;
   }
 
   @Override

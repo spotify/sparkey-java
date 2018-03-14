@@ -1,0 +1,206 @@
+/*
+ * Copyright (c) 2011-2013 Spotify AB
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.spotify.sparkey;
+
+import static com.spotify.sparkey.IndexHash.calcEntryBlockBits;
+
+import com.fasterxml.sort.DataReader;
+import com.fasterxml.sort.DataReaderFactory;
+import com.fasterxml.sort.DataWriter;
+import com.fasterxml.sort.DataWriterFactory;
+import com.fasterxml.sort.SortConfig;
+import com.fasterxml.sort.Sorter;
+import com.google.common.primitives.UnsignedLongs;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Comparator;
+import java.util.Iterator;
+
+final class SortHelper {
+
+  private static final Comparator<Entry> ENTRY_COMPARATOR = new Comparator<Entry>() {
+    @Override
+    public int compare(final Entry o1, final Entry o2) {
+      return o1.compareTo(o2);
+    }
+  };
+  private static final EntryDataWriterFactory ENTRY_DATA_WRITER_FACTORY = new EntryDataWriterFactory();
+
+  static Iterator<SortHelper.Entry> sorted(final File logFile, final long start, final long end,
+                                           final HashType hashData, final long hashCapacity, final int hashSeed) throws IOException {
+    final SortConfig config = new SortConfig();
+    final EntryDataReaderFactory readerFactory = new EntryDataReaderFactory(hashCapacity);
+    Sorter<SortHelper.Entry>
+        sorter = new Sorter<SortHelper.Entry>(config, readerFactory, ENTRY_DATA_WRITER_FACTORY, ENTRY_COMPARATOR);
+
+    return sorter.sort(new SortHelper.LogFileEntryReader(logFile, start, end, hashData, hashCapacity, hashSeed));
+  }
+
+  private static class EntryDataReader extends DataReader<Entry> {
+
+    private final DataInputStream dataInputStream;
+    private final long hashCapacity;
+
+    EntryDataReader(final DataInputStream dataInputStream, final long hashCapacity) {
+      this.dataInputStream = dataInputStream;
+      this.hashCapacity = hashCapacity;
+    }
+
+    @Override
+    public Entry readNext() throws IOException {
+      return new Entry(dataInputStream.readLong(), dataInputStream.readLong(), hashCapacity);
+    }
+
+    @Override
+    public int estimateSizeInBytes(final Entry entry) {
+      return 8 + 8 + 16; // two longs + class info
+    }
+
+    @Override
+    public void close() throws IOException {
+      dataInputStream.close();
+    }
+  }
+
+  private static class EntryDataWriter extends DataWriter<Entry> {
+
+    private final DataOutputStream dataOutputStream;
+
+    EntryDataWriter(final DataOutputStream dataOutputStream) {this.dataOutputStream = dataOutputStream;}
+
+    @Override
+    public void writeEntry(final Entry entry) throws IOException {
+      dataOutputStream.writeLong(entry.hash);
+      dataOutputStream.writeLong(entry.address);
+    }
+
+    @Override
+    public void close() throws IOException {
+      dataOutputStream.close();
+    }
+  }
+
+  private static class EntryDataWriterFactory extends DataWriterFactory<Entry> {
+
+    @Override
+    public DataWriter<Entry> constructWriter(final OutputStream outputStream) {
+      return new EntryDataWriter(new DataOutputStream(outputStream));
+    }
+  }
+
+  private static class EntryDataReaderFactory extends DataReaderFactory<Entry> {
+
+    private final long hashCapacity;
+
+    private EntryDataReaderFactory(final long hashCapacity) {
+      this.hashCapacity = hashCapacity;
+    }
+
+    @Override
+    public DataReader<Entry> constructReader(final InputStream inputStream) {
+      return new EntryDataReader(new DataInputStream(inputStream), hashCapacity);
+    }
+  }
+
+  private static class LogFileEntryReader extends DataReader<Entry> {
+
+    final Iterator<SparkeyReader.Entry> iterator;
+    private final HashType hashData;
+    private final long hashCapacity;
+    private final int maxEntriesPerBlock;
+    private final int entryBlockBits;
+    private final int hashSeed;
+
+    public LogFileEntryReader(final File logFile, final long start, final long end, final HashType hashData,
+                              final long hashCapacity, final int hashSeed) throws IOException {
+      this.hashData = hashData;
+      this.hashCapacity = hashCapacity;
+      this.hashSeed = hashSeed;
+      SparkeyLogIterator entries = new SparkeyLogIterator(logFile, start, end);
+      LogHeader header = entries.header;
+      maxEntriesPerBlock = header.getMaxEntriesPerBlock();
+      entryBlockBits = calcEntryBlockBits(maxEntriesPerBlock);
+      iterator = entries.iterator();
+    }
+
+    @Override
+    public Entry readNext() {
+      if (!iterator.hasNext()) {
+        return null;
+      }
+      // Safe cast, since the iterator is known to be a SparkeyLogIterator
+      SparkeyLogIterator.Entry entry = (SparkeyLogIterator.Entry) iterator.next();
+
+      int typeBit = entry.getType() == SparkeyReader.Type.DELETE ? 0 : 1;
+
+      long hash = hashData.hash(entry.getKeyLength(), entry.getKey(), hashSeed);
+      long position = entry.getPosition();
+      long entryIndex = entry.getEntryIndex();
+      long address = position << (entryBlockBits + 1) | (entryIndex << 1) | typeBit;
+
+      if (position < 0) {
+        throw new RuntimeException("Data size overflow");
+      }
+      return new Entry(hash, address, hashCapacity);
+    }
+
+    @Override
+    public int estimateSizeInBytes(final Entry o) {
+      return 8 + 8 + 16; // Two longs + class info
+    }
+
+    @Override
+    public void close() throws IOException {
+    }
+  }
+
+  static class Entry implements Comparable<Entry> {
+    final long hash;
+    final long address;
+    final long wantedSlot;
+
+    private Entry(final long hash, final long address, final long hashCapacity) {
+      this.hash = hash;
+      this.address = address;
+      this.wantedSlot = IndexHash.getWantedSlot(hash, hashCapacity);
+    }
+
+    @Override
+    public int compareTo(final Entry o) {
+      int v = UnsignedLongs.compare(this.wantedSlot, o.wantedSlot);
+      if (v != 0) {
+        return v;
+      }
+      v = UnsignedLongs.compare(this.hash, o.hash);
+      if (v != 0) {
+        return v;
+      }
+      return UnsignedLongs.compare(this.address, o.address);
+    }
+
+    @Override
+    public String toString() {
+      return "Entry{" +
+             "hash=" + hash +
+             ", address=" + address +
+             '}';
+    }
+  }
+}

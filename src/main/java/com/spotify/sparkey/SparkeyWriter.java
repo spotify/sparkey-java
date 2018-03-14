@@ -95,4 +95,10 @@ public interface SparkeyWriter extends Closeable {
    * @param sparsity
    */
   void setHashSparsity(double sparsity);
+
+  /**
+   * Set the hash seed to use. Default: a random seed
+   * @param hashSeed
+   */
+  void setHashSeed(int hashSeed);
 }

@@ -15,6 +15,7 @@
  */
 package com.spotify.sparkey;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 
 enum AddressSize {
@@ -28,6 +29,11 @@ enum AddressSize {
     void writeAddress(long address, ReadWriteData data) throws IOException {
       Util.writeLittleEndianLong(address, data);
     }
+
+    @Override
+    void writeAddress(final long address, final DataOutputStream data) throws IOException {
+      data.writeLong(address);
+    }
   },
   INT() {
     @Override
@@ -39,6 +45,11 @@ enum AddressSize {
     void writeAddress(long address, ReadWriteData data) throws IOException {
       Util.writeLittleEndianInt((int) address, data);
     }
+
+    @Override
+    void writeAddress(final long address, final DataOutputStream data) throws IOException {
+      data.writeInt((int) address); // TODO: overflow?
+    }
   };
 
   private static final long INT_MASK = (1L << 32) - 1;
@@ -46,4 +57,5 @@ enum AddressSize {
   abstract long readAddress(RandomAccessData data) throws IOException;
 
   abstract void writeAddress(long address, ReadWriteData data) throws IOException;
+  abstract void writeAddress(long address, DataOutputStream data) throws IOException;
 }

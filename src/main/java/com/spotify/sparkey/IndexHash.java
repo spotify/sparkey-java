@@ -19,9 +19,11 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
 import com.google.common.io.Files;
 import com.google.common.primitives.UnsignedLongs;
-
-import java.io.*;
-import java.util.Random;
+import java.io.EOFException;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Iterator;
 
 final class IndexHash {
   private final File indexFile;
@@ -111,7 +113,7 @@ final class IndexHash {
     }
   }
 
-  private static int calcEntryBlockBits(int maxEntriesPerBlock) {
+  static int calcEntryBlockBits(int maxEntriesPerBlock) {
     int i = 0;
     while ((1 << i) < maxEntriesPerBlock) {
       i++;
@@ -119,7 +121,7 @@ final class IndexHash {
     return i;
   }
 
-  static void createNew(File indexFile, File logFile, HashType hashType, double sparsity, boolean fsync) throws IOException {
+  static void createNew(File indexFile, File logFile, HashType hashType, double sparsity, boolean fsync, final int hashSeed) throws IOException {
     if (sparsity < 1.3) {
       sparsity = 1.3;
     }
@@ -132,7 +134,6 @@ final class IndexHash {
 
     long capacity = 1L | (long) (logHeader.getNumPuts() * sparsity);
 
-    int hashSeed = new Random().nextInt();
     IndexHeader header = new IndexHeader(logHeader.getFileIdentifier(), logHeader.getDataEnd(),
         logHeader.getMaxKeyLen(), logHeader.getMaxValueLen(), addressSize, hashType.size(), capacity, logHeader.getNumPuts(),
         hashSeed,
@@ -156,14 +157,14 @@ final class IndexHash {
     if (true) {
       File indexFile2 = Sparkey.setEnding(indexFile, ".spi2");
       ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
-      fillFromLog(indexData2, logFile, header2, logHeader.size(), header.getDataEnd(),
+      fillFromLogSorted(indexData2, logFile, header2, logHeader.size(), header.getDataEnd(),
           logHeader);
       calculateMaxDisplacement(header2, indexData2);
       indexData2.close();
 
       if (!Files.equal(indexFile, indexFile2)) {
         indexFile.renameTo(Sparkey.setEnding(indexFile, ".spi1"));
-        throw new RuntimeException("Files are not equal: " + indexFile + ", " + indexFile2);
+        throw new RuntimeException("Files are not equal: " + indexFile + ", " + indexFile2 + "\n" + header.toString() + "\n" + header2.toString());
       } else {
         indexFile2.delete();
       }
@@ -239,6 +240,7 @@ final class IndexHash {
     HashType hashData = header.getHashType();
     AddressSize addressData = header.getAddressData();
     int entryIndexbits = header.getEntryBlockBits();
+    int entryBlockBitsBitmask = header.getEntryBlockBitsBitmask();
 
     long hashCapacity = header.getHashCapacity();
 
@@ -261,21 +263,64 @@ final class IndexHash {
         byte[] key = entry.getKeyBuf();
         int keyLen = entry.getKeyLength();
         long hash = hashData.hash(keyLen, key, header.getHashSeed());
+        //System.out.println("Adding hash1: " + hash + ", " + address);
         switch (type) {
           case PUT:
             put(indexData, header, hashCapacity, keyLen, key,
-                    logData, keyBuf, hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+                    logData, keyBuf, hashData, addressData, entryBlockBitsBitmask, entryIndexbits,
                 hash, address);
             break;
           case DELETE:
             delete(indexData, header, hashCapacity, keyLen, key, logData, keyBuf,
-                    hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+                    hashData, addressData, entryBlockBitsBitmask, entryIndexbits,
                 hash, address);
             break;
         }
       }
     } finally {
       logData.close();
+    }
+  }
+
+  private static void fillFromLogSorted(
+      ReadWriteData indexData, final File logFile,
+      IndexHeader header,
+      final long start, final long end,
+      LogHeader logHeader) throws IOException {
+    final HashType hashData = header.getHashType();
+    AddressSize addressData = header.getAddressData();
+
+    final long hashCapacity = header.getHashCapacity();
+
+    final BlockRandomInput logData =
+        logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
+
+    final Iterator<SortHelper.Entry> iterator2 = SortHelper.sorted(logFile, start, end, hashData, hashCapacity, header.getHashSeed());
+
+    final int maxEntriesPerBlock = logHeader.getMaxEntriesPerBlock();
+    final int entryIndexbits = calcEntryBlockBits(maxEntriesPerBlock);
+
+    final byte[] keyBuf = new byte[(int) logHeader.getMaxKeyLen()];
+    while (iterator2.hasNext()) {
+      final SortHelper.Entry entry = iterator2.next();
+
+      // Safe cast, since the iterator is known to be a SparkeyLogIterator
+      final SparkeyReader.Type type = (entry.address & 1) == 0 ? SparkeyReader.Type.DELETE : SparkeyReader.Type.PUT;
+      final long address = entry.address >>> 1;
+      final long hash = entry.hash;
+      //System.out.println("Adding hash2: " + hash + ", " + address);
+      switch (type) {
+        case PUT:
+          put(indexData, header, hashCapacity, -1, keyBuf,
+              logData, keyBuf, hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+              hash, address);
+          break;
+        case DELETE:
+          delete(indexData, header, hashCapacity, -1, keyBuf, logData, keyBuf,
+              hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+              hash, address);
+          break;
+      }
     }
   }
 
@@ -407,6 +452,10 @@ final class IndexHash {
         if (keyLen == -1) {
           logData.seek(position);
           skipStuff(entryIndex, logData);
+          if (0 != Util.readUnsignedVLQInt(logData)) {
+            // Not a delete entry?
+            throw new RuntimeException("Corrupt data");
+          }
           keyLen = Util.readUnsignedVLQInt(logData);
           logData.readFully(key, 0, keyLen);
         }
@@ -468,7 +517,7 @@ final class IndexHash {
     }
   }
 
-  private static void skipStuff(long entryIndex, BlockRandomInput logData) throws IOException {
+  static void skipStuff(long entryIndex, BlockRandomInput logData) throws IOException {
     for (int i = 0; i < entryIndex; i++) {
       int keyLen2 = Util.readUnsignedVLQInt(logData);
       int valueLen2 = Util.readUnsignedVLQInt(logData);
@@ -508,11 +557,13 @@ final class IndexHash {
     int entryIndex = (int) (address) & entryIndexBitmask;
     long position = address >>> entryIndexBits;
 
+    //System.out.println("Wanted slot: " + wantedSlot);
     boolean mightBeCollision = true;
     while (--tries >= 0) {
       long hash2 = hashData.readHash(indexData);
       long address2 = addressData.readAddress(indexData);
       if (address2 == 0) {
+        //System.out.println("Writing " + hash + " at " + slot);
         indexData.seek(pos);
         hashData.writeHash(hash, indexData);
         addressData.writeAddress(address, indexData);
@@ -528,7 +579,12 @@ final class IndexHash {
         if (keyLen == -1) {
           logData.seek(position);
           skipStuff(entryIndex, logData);
-          keyLen = Util.readUnsignedVLQInt(logData);
+          keyLen = Util.readUnsignedVLQInt(logData) - 1;
+          if (keyLen == -1) {
+            // This was a delete?
+            throw new RuntimeException("Corrupt data");
+          }
+          Util.readUnsignedVLQInt(logData); // Ignore value length
           logData.readFully(key, 0, keyLen);
         }
 
@@ -553,7 +609,8 @@ final class IndexHash {
       }
 
       long otherDisplacement = getDisplacement(hashCapacity, slot, hash2);
-      if (displacement > otherDisplacement) {
+      // TODO: skip the hash < hash2 - only useful for generating deterministic hash tables
+      if (displacement > otherDisplacement || (displacement == otherDisplacement && hash < hash2)) {
         // Steal the slot, and move the other one
         indexData.seek(pos);
         hashData.writeHash(hash, indexData);
@@ -579,7 +636,7 @@ final class IndexHash {
     throw new IOException("No free slots in the hash");
   }
 
-  private static long getWantedSlot(long hash, long capacity) {
+  static long getWantedSlot(long hash, long capacity) {
     return UnsignedLongs.remainder(hash, capacity);
   }
 

@@ -35,6 +35,16 @@ public class CorrectnessTest extends BaseSystemTest {
   private static final int[] SIZES = new int[]{0, 1, 2, 3, 4, 10, 100, 1000};
 
   @Test
+  public void testTrivial() throws IOException {
+       testHelper(4, CompressionType.NONE, 0, HashType.HASH_32_BITS);
+  }
+
+  @Test
+  public void testTrivialDelete() throws IOException {
+       testHelperWithDeletes(1, CompressionType.NONE, 0, HashType.HASH_32_BITS);
+  }
+
+  @Test
   public void testSimple() throws IOException {
     for (HashType hashType : HashType.values()) {
       for (int size : SIZES) {
@@ -71,6 +81,7 @@ public class CorrectnessTest extends BaseSystemTest {
     for (int i = 0; i < N; i++) {
       writer.put("Key" + i, "Value" + i);
     }
+    writer.setHashSeed(1738868818);
     writer.writeHash(hashType);
     writer.close();
 
@@ -92,6 +103,7 @@ public class CorrectnessTest extends BaseSystemTest {
     SparkeyWriter writer = Sparkey.createNew(indexFile, compressionType, compressionBlockSize);
 
     writer.setFsync(true);
+    writer.setHashSeed(-112683590);
     writer.setHashType(hashType);
 
     for (int i = 0; i < N; i++) {
