@@ -21,7 +21,7 @@ enum AddressSize {
   LONG() {
     @Override
     long readAddress(RandomAccessData data) throws IOException {
-      return Util.readLittleEndianLong(data);
+      return data.readLittleEndianLong();
     }
 
     @Override
@@ -32,7 +32,7 @@ enum AddressSize {
   INT() {
     @Override
     long readAddress(RandomAccessData data) throws IOException {
-      return Util.readLittleEndianInt(data) & INT_MASK;
+      return data.readLittleEndianInt() & INT_MASK;
     }
 
     @Override

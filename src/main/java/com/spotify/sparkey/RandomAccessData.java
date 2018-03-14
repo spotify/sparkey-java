@@ -19,4 +19,8 @@ import java.io.IOException;
 
 interface RandomAccessData {
   int readUnsignedByte() throws IOException;
+
+  int readLittleEndianInt() throws IOException;
+
+  long readLittleEndianLong() throws IOException;
 }

@@ -15,8 +15,10 @@
  */
 package com.spotify.sparkey;
 
+import com.google.common.collect.Lists;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 
 final class InMemoryData implements RandomAccessData {
   private static final int CHUNK_SIZE = 1 << 30;
@@ -35,21 +37,17 @@ final class InMemoryData implements RandomAccessData {
     if (size < 0) {
       throw new IllegalArgumentException("Negative size: " + size);
     }
-    long numFullMaps = (size - 1) >> 30;
-    if (numFullMaps >= Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("Too large size: " + size);
-    }
-    long sizeFullMaps = numFullMaps * CHUNK_SIZE;
 
-    numChunks = (int) (numFullMaps + 1);
-    chunks = new byte[numChunks][];
-    for (int i = 0; i < numFullMaps; i++) {
-      chunks[i] = new byte[CHUNK_SIZE];
+    final ArrayList<byte[]> chunksBuffer = Lists.newArrayList();
+    long offset = 0;
+    while (offset < size) {
+      long remaining = size - offset;
+      int chunkSize = (int) Math.min(remaining, CHUNK_SIZE);
+      chunksBuffer.add(new byte[chunkSize]);
+      offset += CHUNK_SIZE;
     }
-    long lastSize = size - sizeFullMaps;
-    if (lastSize > 0) {
-      chunks[numChunks - 1] = new byte[(int) lastSize];
-    }
+    chunks = chunksBuffer.toArray(new byte[chunksBuffer.size()][]);
+    numChunks = chunks.length;
 
     curChunkIndex = 0;
     curChunk = chunks[0];
@@ -94,6 +92,16 @@ final class InMemoryData implements RandomAccessData {
       next();
     }
     return Util.unsignedByte(curChunk[curChunkPos++]);
+  }
+
+  @Override
+  public int readLittleEndianInt() throws IOException {
+    return Util.readLittleEndianIntSlowly(this);
+  }
+
+  @Override
+  public long readLittleEndianLong() throws IOException {
+    return Util.readLittleEndianLongSlowly(this);
   }
 
   @Override
