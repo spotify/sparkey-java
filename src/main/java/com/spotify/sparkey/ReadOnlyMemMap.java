@@ -21,8 +21,10 @@ import com.google.common.collect.Lists;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -66,23 +68,16 @@ final class ReadOnlyMemMap implements RandomAccessData {
       if (size <= 0) {
         throw new IllegalArgumentException("Non-positive size: " + size);
       }
-      long numFullMaps = (size - 1) >> 30;
-      if (numFullMaps >= Integer.MAX_VALUE) {
-        throw new IllegalArgumentException("Too large size: " + size);
-      }
-      long sizeFullMaps = numFullMaps * MAP_SIZE;
-
-      numChunks = (int) (numFullMaps + 1);
-      chunks = new MappedByteBuffer[numChunks];
+      final ArrayList<MappedByteBuffer> chunksBuffer = Lists.newArrayList();
       long offset = 0;
-      for (int i = 0; i < numFullMaps; i++) {
-        chunks[i] = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, offset, MAP_SIZE);
+      while (offset < size) {
+        long remaining = size - offset;
+        long chunkSize = Math.min(remaining, MAP_SIZE);
+        chunksBuffer.add(createChunk(offset, chunkSize));
         offset += MAP_SIZE;
       }
-      long lastSize = size - sizeFullMaps;
-      if (lastSize > 0) {
-        chunks[numChunks - 1] = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, offset, lastSize);
-      }
+      chunks = chunksBuffer.toArray(new MappedByteBuffer[chunksBuffer.size()]);
+      numChunks = chunks.length;
 
       curChunkIndex = 0;
       curChunk = chunks[0];
@@ -92,6 +87,12 @@ final class ReadOnlyMemMap implements RandomAccessData {
       Throwables.propagateIfPossible(e, IOException.class);
       throw Throwables.propagate(e);
     }
+  }
+
+  private MappedByteBuffer createChunk(final long offset, final long size) throws IOException {
+    final MappedByteBuffer map = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, offset, size);
+    map.order(ByteOrder.LITTLE_ENDIAN);
+    return map;
   }
 
   private ReadOnlyMemMap(ReadOnlyMemMap source, MappedByteBuffer[] chunks) {
@@ -167,6 +168,28 @@ final class ReadOnlyMemMap implements RandomAccessData {
     return ((int) curChunk.get()) & 0xFF;
   }
 
+  @Override
+  public int readLittleEndianInt() throws IOException {
+    MappedByteBuffer curChunk = getCurChunk();
+    if (curChunk.remaining() >= 4) {
+      return curChunk.getInt();
+    }
+
+    // Value is on the chunk boundary - edge case so it is ok if it's a bit slower.
+    return Util.readLittleEndianIntSlowly(this);
+  }
+
+  @Override
+  public long readLittleEndianLong() throws IOException {
+    MappedByteBuffer curChunk = getCurChunk();
+    if (curChunk.remaining() >= 8) {
+      return curChunk.getLong();
+    }
+
+    // Value is on the chunk boundary - edge case so it is ok if it's a bit slower.
+    return Util.readLittleEndianLongSlowly(this);
+  }
+
   public void readFully(byte[] buffer, int offset, int length) throws IOException {
     MappedByteBuffer curChunk = getCurChunk();
     long remaining = curChunk.remaining();
@@ -202,7 +225,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   }
 
   private MappedByteBuffer getCurChunk() throws SparkeyReaderClosedException {
-    MappedByteBuffer curChunk = this.curChunk;
+    final MappedByteBuffer curChunk = this.curChunk;
     if (curChunk == null) {
       throw closedException();
     }
@@ -226,6 +249,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
       MappedByteBuffer[] chunks = new MappedByteBuffer[numChunks];
       for (int i = 0; i < numChunks; i++) {
         chunks[i] = (MappedByteBuffer) this.chunks[i].duplicate();
+        chunks[i].order(ByteOrder.LITTLE_ENDIAN);
       }
       ReadOnlyMemMap duplicate = new ReadOnlyMemMap(this, chunks);
       allInstances.add(duplicate);

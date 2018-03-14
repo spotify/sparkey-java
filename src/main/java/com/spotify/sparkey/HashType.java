@@ -21,7 +21,7 @@ public enum HashType {
   HASH_64_BITS(8) {
     @Override
     long readHash(RandomAccessData data) throws IOException {
-      return Util.readLittleEndianLong(data);
+      return data.readLittleEndianLong();
     }
 
     @Override
@@ -37,7 +37,7 @@ public enum HashType {
   HASH_32_BITS(4) {
     @Override
     long readHash(RandomAccessData data) throws IOException {
-      return Util.readLittleEndianInt(data) & INT_MASK;
+      return data.readLittleEndianInt() & INT_MASK;
     }
 
     @Override

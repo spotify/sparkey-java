@@ -65,7 +65,7 @@ final class Util {
     writeLittleEndianInt((int) (value >>> 32), rw);
   }
 
-  static long readLittleEndianLong(RandomAccessData data) throws IOException {
+  static long readLittleEndianLongSlowly(RandomAccessData data) throws IOException {
     long res = (long) data.readUnsignedByte();
     res |= ((long) data.readUnsignedByte()) << 8;
     res |= ((long) data.readUnsignedByte()) << 16;
@@ -84,7 +84,7 @@ final class Util {
             input) << 48 | (long) readByte(input) << 56;
   }
 
-  static int readLittleEndianInt(RandomAccessData data) throws IOException {
+  static int readLittleEndianIntSlowly(RandomAccessData data) throws IOException {
     int a = data.readUnsignedByte();
     int b = data.readUnsignedByte();
     int c = data.readUnsignedByte();
