@@ -228,6 +228,7 @@ final class IndexHash {
 
     HashType hashData = header.getHashType();
     AddressSize addressData = header.getAddressData();
+    int entryIndexbits = header.getEntryBlockBits();
 
     long hashCapacity = header.getHashCapacity();
 
@@ -238,6 +239,7 @@ final class IndexHash {
       for (SparkeyReader.Entry entry2 : iterator) {
         // Safe cast, since the iterator is known to be a SparkeyLogIterator
         SparkeyLogIterator.Entry entry = (SparkeyLogIterator.Entry) entry2;
+        final SparkeyReader.Type type = entry.getType();
         long curBlock = entry.getPosition();
         if (curBlock != prevBlock) {
           prevBlock = curBlock;
@@ -245,14 +247,20 @@ final class IndexHash {
         } else {
           entryIndex++;
         }
-        switch (entry.getType()) {
+        final long address = (curBlock << entryIndexbits) | entryIndex;
+        byte[] key = entry.getKeyBuf();
+        int keyLen = entry.getKeyLength();
+        long hash = hashData.hash(keyLen, key, header.getHashSeed());
+        switch (type) {
           case PUT:
-            put(indexData, header, hashCapacity, entry.getKeyLength(), entry.getKeyBuf(), entry.getPosition(), entryIndex,
-                    logData, keyBuf, hashData, addressData, header.getEntryBlockBitsBitmask(), header.getEntryBlockBits());
+            put(indexData, header, hashCapacity, keyLen, key,
+                    logData, keyBuf, hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+                hash, address);
             break;
           case DELETE:
-            delete(indexData, header, hashCapacity, entry.getKeyLength(), entry.getKeyBuf(), logData, keyBuf,
-                    hashData, addressData, header.getEntryBlockBitsBitmask(), header.getEntryBlockBits());
+            delete(indexData, header, hashCapacity, keyLen, key, logData, keyBuf,
+                    hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+                hash, address);
             break;
         }
       }
@@ -364,8 +372,8 @@ final class IndexHash {
 
   private static void delete(InMemoryData indexData, IndexHeader header, long hashCapacity, int keyLen,
                              byte[] key, BlockRandomInput logData,
-                             byte[] keyBuf, HashType hashData, AddressSize addressData, int entryIndexBitmask, int entryIndexBits) throws IOException {
-    long hash = hashData.hash(keyLen, key, header.getHashSeed());
+                             byte[] keyBuf, HashType hashData, AddressSize addressData, int entryIndexBitmask, int entryIndexBits,
+                             final long hash, final long address) throws IOException {
     long wantedSlot = getWantedSlot(hash, hashCapacity);
 
     long pos = wantedSlot * header.getSlotSize();
@@ -374,17 +382,27 @@ final class IndexHash {
     long slot = wantedSlot;
     long displacement = 0;
 
+    int entryIndex = (int) (address) & entryIndexBitmask;
+    long position = address >>> entryIndexBits;
+
     while (true) {
       long hash2 = hashData.readHash(indexData);
-      long position2 = addressData.readAddress(indexData);
-      if (position2 == 0) {
+      long address2 = addressData.readAddress(indexData);
+      if (address2 == 0) {
         return;
       }
-      int entryIndex = (int) (position2) & entryIndexBitmask;
-      position2 >>>= entryIndexBits;
+      int entryIndex2 = (int) (address2) & entryIndexBitmask;
+      long position2 = address2 >>> entryIndexBits;
       if (hash == hash2) {
+        if (keyLen == -1) {
+          logData.seek(position);
+          skipStuff(entryIndex, logData);
+          keyLen = Util.readUnsignedVLQInt(logData);
+          logData.readFully(key, 0, keyLen);
+        }
+
         logData.seek(position2);
-        skipStuff(entryIndex, logData);
+        skipStuff(entryIndex2, logData);
         int keyLen2 = Util.readUnsignedVLQInt(logData);
         if (keyLen2 == 0) {
           throw new RuntimeException("Invalid data - reference to delete entry");
@@ -452,15 +470,22 @@ final class IndexHash {
     }
   }
 
-  private static void put(InMemoryData indexData, IndexHeader header, long hashCapacity, int keyLen, byte[] key,
-                          long position, int entryIndex, BlockRandomInput logData,
-                          byte[] keyBuf, HashType hashData, AddressSize addressData, int entryIndexBitmask, int entryIndexBits) throws IOException {
+  private static void put(
+      final InMemoryData indexData, final IndexHeader header, final long hashCapacity,
+      int keyLen, byte[] key,
+      final BlockRandomInput logData,
+      byte[] keyBuf,
+      final HashType hashData,
+      final AddressSize addressData,
+      final int entryIndexBitmask,
+      final int entryIndexBits,
+      long hash,
+      long address) throws IOException {
 
     if (header.getNumEntries() >= hashCapacity) {
       throw new IOException("No free slots in the hash: " + header.getNumEntries() + " >= " + hashCapacity);
     }
 
-    long hash = hashData.hash(keyLen, key, header.getHashSeed());
     long wantedSlot = getWantedSlot(hash, hashCapacity);
 
     long pos = wantedSlot * header.getSlotSize();
@@ -470,23 +495,33 @@ final class IndexHash {
     long tries = hashCapacity;
     long slot = wantedSlot;
 
+    int entryIndex = (int) (address) & entryIndexBitmask;
+    long position = address >>> entryIndexBits;
+
     boolean mightBeCollision = true;
     while (--tries >= 0) {
       long hash2 = hashData.readHash(indexData);
-      long position2 = addressData.readAddress(indexData);
-      if (position2 == 0) {
+      long address2 = addressData.readAddress(indexData);
+      if (address2 == 0) {
         indexData.seek(pos);
         hashData.writeHash(hash, indexData);
-        addressData.writeAddress((position << entryIndexBits) | entryIndex, indexData);
+        addressData.writeAddress(address, indexData);
         header.addedEntry();
         return;
       }
 
-      int entryIndex2 = (int) (position2) & entryIndexBitmask;
-      position2 >>>= entryIndexBits;
+      int entryIndex2 = (int) (address2) & entryIndexBitmask;
+      long position2 = address2 >>> entryIndexBits;
 
 
       if (mightBeCollision && hash == hash2) {
+        if (keyLen == -1) {
+          logData.seek(position);
+          skipStuff(entryIndex, logData);
+          keyLen = Util.readUnsignedVLQInt(logData);
+          logData.readFully(key, 0, keyLen);
+        }
+
         logData.seek(position2);
         skipStuff(entryIndex2, logData);
         int keyLen2 = Util.readUnsignedVLQInt(logData);
@@ -500,7 +535,7 @@ final class IndexHash {
           if (Util.equals(keyLen, key, keyBuf)) {
             indexData.seek(pos);
             hashData.writeHash(hash, indexData);
-            addressData.writeAddress((position << entryIndexBits) | entryIndex, indexData);
+            addressData.writeAddress(address, indexData);
             header.replacedEntry(keyLen2, valueLen2);
             return;
           }
@@ -512,10 +547,11 @@ final class IndexHash {
         // Steal the slot, and move the other one
         indexData.seek(pos);
         hashData.writeHash(hash, indexData);
-        addressData.writeAddress((position << entryIndexBits) | entryIndex, indexData);
+        addressData.writeAddress(address, indexData);
 
         position = position2;
         entryIndex = entryIndex2;
+        address = address2;
         displacement = otherDisplacement;
         hash = hash2;
         mightBeCollision = false;
