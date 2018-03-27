@@ -137,7 +137,7 @@ final class IndexHash {
 
     long hashLength = header.getHashLength();
 
-    ReadWriteData indexData = new InMemoryData(hashLength, indexFile, header, fsync);
+    ReadWriteData indexData = new FileFlushingData(hashLength, indexFile, header, fsync);
 
     fillFromLog(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
             logHeader);

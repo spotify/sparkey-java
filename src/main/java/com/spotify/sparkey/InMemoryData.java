@@ -16,31 +16,23 @@
 package com.spotify.sparkey;
 
 import com.google.common.collect.Lists;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 
-final class InMemoryData implements ReadWriteData {
+class InMemoryData implements ReadWriteData {
   private static final int CHUNK_SIZE = 1 << 30;
   private static final int BITMASK_30 = ((1 << 30) - 1);
 
-  private final byte[][] chunks;
+  protected final byte[][] chunks;
   private final long size;
-  private final File file;
-  private final IndexHeader header;
-  private final boolean fsync;
   private final int numChunks;
 
   private int curChunkIndex;
   private byte[] curChunk;
   private int curChunkPos;
 
-  InMemoryData(long size, File file, IndexHeader header, boolean fsync) {
+  InMemoryData(long size) {
     this.size = size;
-    this.file = file;
-    this.header = header;
-    this.fsync = fsync;
     if (size < 0) {
       throw new IllegalArgumentException("Negative size: " + size);
     }
@@ -62,23 +54,10 @@ final class InMemoryData implements ReadWriteData {
 
   @Override
   public void close() throws IOException {
-    FileOutputStream stream = new FileOutputStream(file);
-    try {
-      header.write(stream);
-      for (byte[] chunk : chunks) {
-        stream.write(chunk);
-      }
-      stream.flush(); // Not needed for FileOutputStream, but still semantically correct
-      if (fsync) {
-        stream.getFD().sync();
-      }
-    } finally {
-      for (int i = 0; i < numChunks; i++) {
-        chunks[i] = null;
-      }
-      curChunk = null;
-      stream.close();
+    for (int i = 0; i < numChunks; i++) {
+      chunks[i] = null;
     }
+    curChunk = null;
   }
 
   @Override

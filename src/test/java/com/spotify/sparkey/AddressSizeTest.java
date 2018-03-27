@@ -15,7 +15,7 @@ public class AddressSizeTest {
   @Test
   public void testAddressSizeLong() throws IOException {
     byte[] BYTES = new byte[] {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
-    InMemoryData imd = new InMemoryData(BYTES.length, null, null, false);
+    InMemoryData imd = new InMemoryData(BYTES.length);
     for (byte b : BYTES) {
       imd.writeUnsignedByte(b);
     }
@@ -33,7 +33,7 @@ public class AddressSizeTest {
   @Test
   public void testAddressSizeInt() throws IOException {
     byte[] BYTES = new byte[] {0x01, 0x02, 0x03, 0x04};
-    InMemoryData imd = new InMemoryData(BYTES.length, null, null, false);
+    InMemoryData imd = new InMemoryData(BYTES.length);
     for (byte b : BYTES) {
       imd.writeUnsignedByte(b);
     }
