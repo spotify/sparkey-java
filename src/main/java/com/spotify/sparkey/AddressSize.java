@@ -25,7 +25,7 @@ enum AddressSize {
     }
 
     @Override
-    void writeAddress(long address, InMemoryData data) throws IOException {
+    void writeAddress(long address, ReadWriteData data) throws IOException {
       Util.writeLittleEndianLong(address, data);
     }
   },
@@ -36,7 +36,7 @@ enum AddressSize {
     }
 
     @Override
-    void writeAddress(long address, InMemoryData data) throws IOException {
+    void writeAddress(long address, ReadWriteData data) throws IOException {
       Util.writeLittleEndianInt((int) address, data);
     }
   };
@@ -45,5 +45,5 @@ enum AddressSize {
 
   abstract long readAddress(RandomAccessData data) throws IOException;
 
-  abstract void writeAddress(long address, InMemoryData data) throws IOException;
+  abstract void writeAddress(long address, ReadWriteData data) throws IOException;
 }

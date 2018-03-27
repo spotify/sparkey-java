@@ -137,15 +137,15 @@ final class IndexHash {
 
     long hashLength = header.getHashLength();
 
-    InMemoryData indexData = new InMemoryData(hashLength);
+    ReadWriteData indexData = new InMemoryData(hashLength, indexFile, header, fsync);
 
     fillFromLog(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
             logHeader);
     calculateMaxDisplacement(header, indexData);
-    indexData.close(indexFile, header, fsync);
+    indexData.close();
   }
 
-  private static void calculateMaxDisplacement(IndexHeader header, InMemoryData indexData) throws IOException {
+  private static void calculateMaxDisplacement(IndexHeader header, RandomAccessData indexData) throws IOException {
     HashType hashData = header.getHashType();
     AddressSize addressData = header.getAddressData();
 
@@ -207,7 +207,7 @@ final class IndexHash {
     this.logData.close();
   }
 
-  private static void fillFromLog(InMemoryData indexData, File logFile, IndexHeader header, long start, long end, LogHeader logHeader) throws IOException {
+  private static void fillFromLog(ReadWriteData indexData, File logFile, IndexHeader header, long start, long end, LogHeader logHeader) throws IOException {
     SparkeyLogIterator iterator = new SparkeyLogIterator(logFile, start, end);
     BlockRandomInput logData = logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
 
@@ -355,7 +355,7 @@ final class IndexHash {
     }
   }
 
-  private static void delete(InMemoryData indexData, IndexHeader header, long hashCapacity, int keyLen,
+  private static void delete(ReadWriteData indexData, IndexHeader header, long hashCapacity, int keyLen,
                              byte[] key, BlockRandomInput logData,
                              byte[] keyBuf, HashType hashData, AddressSize addressData, int entryIndexBitmask, int entryIndexBits,
                              final long hash, final long address) throws IOException {
@@ -456,7 +456,7 @@ final class IndexHash {
   }
 
   private static void put(
-      final InMemoryData indexData, final IndexHeader header, final long hashCapacity,
+      final ReadWriteData indexData, final IndexHeader header, final long hashCapacity,
       int keyLen, byte[] key,
       final BlockRandomInput logData,
       byte[] keyBuf,

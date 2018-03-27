@@ -21,20 +21,26 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 
-final class InMemoryData implements RandomAccessData {
+final class InMemoryData implements ReadWriteData {
   private static final int CHUNK_SIZE = 1 << 30;
   private static final int BITMASK_30 = ((1 << 30) - 1);
 
   private final byte[][] chunks;
   private final long size;
+  private final File file;
+  private final IndexHeader header;
+  private final boolean fsync;
   private final int numChunks;
 
   private int curChunkIndex;
   private byte[] curChunk;
   private int curChunkPos;
 
-  InMemoryData(long size) {
+  InMemoryData(long size, File file, IndexHeader header, boolean fsync) {
     this.size = size;
+    this.file = file;
+    this.header = header;
+    this.fsync = fsync;
     if (size < 0) {
       throw new IllegalArgumentException("Negative size: " + size);
     }
@@ -54,11 +60,14 @@ final class InMemoryData implements RandomAccessData {
     curChunk = chunks[0];
   }
 
-  public void close(File file, IndexHeader header, boolean fsync) throws IOException {
+  @Override
+  public void close() throws IOException {
     FileOutputStream stream = new FileOutputStream(file);
     try {
       header.write(stream);
-      flushToFile(stream);
+      for (byte[] chunk : chunks) {
+        stream.write(chunk);
+      }
       stream.flush(); // Not needed for FileOutputStream, but still semantically correct
       if (fsync) {
         stream.getFD().sync();
@@ -72,7 +81,8 @@ final class InMemoryData implements RandomAccessData {
     }
   }
 
-  void seek(long pos) throws IOException {
+  @Override
+  public void seek(long pos) throws IOException {
     if (pos > size) {
       throw new IOException("Corrupt index: referencing data outside of range");
     }
@@ -82,7 +92,8 @@ final class InMemoryData implements RandomAccessData {
     curChunkPos = ((int) pos) & BITMASK_30;
   }
 
-  void writeUnsignedByte(int value) throws IOException {
+  @Override
+  public void writeUnsignedByte(int value) throws IOException {
     if (curChunkPos == CHUNK_SIZE) {
       next();
     }
@@ -121,11 +132,5 @@ final class InMemoryData implements RandomAccessData {
     return "InMemoryData{" +
             "size=" + size +
             '}';
-  }
-
-  public void flushToFile(FileOutputStream stream) throws IOException {
-    for (byte[] chunk : chunks) {
-      stream.write(chunk);
-    }
   }
 }

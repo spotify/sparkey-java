@@ -25,7 +25,7 @@ public enum HashType {
     }
 
     @Override
-    void writeHash(long hash, InMemoryData data) throws IOException {
+    void writeHash(long hash, ReadWriteData data) throws IOException {
       Util.writeLittleEndianLong(hash, data);
     }
 
@@ -41,7 +41,7 @@ public enum HashType {
     }
 
     @Override
-    void writeHash(long hash, InMemoryData data) throws IOException {
+    void writeHash(long hash, ReadWriteData data) throws IOException {
       Util.writeLittleEndianInt((int) hash, data);
     }
 
@@ -62,7 +62,7 @@ public enum HashType {
 
   abstract long readHash(RandomAccessData data) throws IOException;
 
-  abstract void writeHash(long hash, InMemoryData data) throws IOException;
+  abstract void writeHash(long hash, ReadWriteData data) throws IOException;
 
   abstract long hash(int keyLen, byte[] key, int seed);
 
