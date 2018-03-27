@@ -16,6 +16,7 @@
 package com.spotify.sparkey;
 
 import com.google.common.collect.Lists;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -53,11 +54,22 @@ final class InMemoryData implements RandomAccessData {
     curChunk = chunks[0];
   }
 
-  void close() {
-    for (int i = 0; i < numChunks; i++) {
-      chunks[i] = null;
+  public void close(File file, IndexHeader header, boolean fsync) throws IOException {
+    FileOutputStream stream = new FileOutputStream(file);
+    try {
+      header.write(stream);
+      flushToFile(stream);
+      stream.flush(); // Not needed for FileOutputStream, but still semantically correct
+      if (fsync) {
+        stream.getFD().sync();
+      }
+    } finally {
+      for (int i = 0; i < numChunks; i++) {
+        chunks[i] = null;
+      }
+      curChunk = null;
+      stream.close();
     }
-    curChunk = null;
   }
 
   void seek(long pos) throws IOException {

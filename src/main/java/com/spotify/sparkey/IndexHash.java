@@ -142,7 +142,7 @@ final class IndexHash {
     fillFromLog(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
             logHeader);
     calculateMaxDisplacement(header, indexData);
-    flushToFile(indexFile, header, indexData, fsync);
+    indexData.close(indexFile, header, fsync);
   }
 
   private static void calculateMaxDisplacement(IndexHeader header, InMemoryData indexData) throws IOException {
@@ -200,21 +200,6 @@ final class IndexHash {
   private static boolean calcAddressSize(LogHeader logHeader) {
     int entryBlockBits = calcEntryBlockBits(logHeader.getMaxEntriesPerBlock());
     return logHeader.getDataEnd() <= (1L << (30 - entryBlockBits));
-  }
-
-  private static void flushToFile(File file, IndexHeader header, InMemoryData data, boolean fsync) throws IOException {
-    FileOutputStream stream = new FileOutputStream(file);
-    try {
-      header.write(stream);
-      data.flushToFile(stream);
-      stream.flush(); // Not needed for FileOutputStream, but still semantically correct
-      if (fsync) {
-        stream.getFD().sync();
-      }
-    } finally {
-      data.close();
-      stream.close();
-    }
   }
 
   void close() {
