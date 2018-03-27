@@ -21,7 +21,7 @@ class FileFlushingData extends InMemoryData {
   public void close() throws IOException {
     FileOutputStream stream = new FileOutputStream(file);
     try {
-      header.write(stream);
+      stream.write(header.asBytes());
       for (byte[] chunk : chunks) {
         stream.write(chunk);
       }

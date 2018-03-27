@@ -151,7 +151,7 @@ public final class Sparkey {
     return setEnding(file, ".spi");
   }
 
-  private static File setEnding(File file, String ending) {
+  static File setEnding(File file, String ending) {
     String fileName = file.getName();
     if (fileName.endsWith(ending)) {
       return file;

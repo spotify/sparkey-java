@@ -17,6 +17,7 @@ package com.spotify.sparkey;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
+import com.google.common.io.Files;
 import com.google.common.primitives.UnsignedLongs;
 
 import java.io.*;
@@ -131,18 +132,42 @@ final class IndexHash {
 
     long capacity = 1L | (long) (logHeader.getNumPuts() * sparsity);
 
+    int hashSeed = new Random().nextInt();
     IndexHeader header = new IndexHeader(logHeader.getFileIdentifier(), logHeader.getDataEnd(),
-            logHeader.getMaxKeyLen(), logHeader.getMaxValueLen(), addressSize, hashType.size(), capacity, logHeader.getNumPuts(), new Random().nextInt(),
-            calcEntryBlockBits(logHeader.getMaxEntriesPerBlock()));
+        logHeader.getMaxKeyLen(), logHeader.getMaxValueLen(), addressSize, hashType.size(), capacity, logHeader.getNumPuts(),
+        hashSeed,
+        calcEntryBlockBits(logHeader.getMaxEntriesPerBlock()));
+
+    IndexHeader header2 = new IndexHeader(logHeader.getFileIdentifier(), logHeader.getDataEnd(),
+        logHeader.getMaxKeyLen(), logHeader.getMaxValueLen(), addressSize, hashType.size(), capacity, logHeader.getNumPuts(),
+        hashSeed,
+        calcEntryBlockBits(logHeader.getMaxEntriesPerBlock()));
 
     long hashLength = header.getHashLength();
 
     ReadWriteData indexData = new FileFlushingData(hashLength, indexFile, header, fsync);
 
     fillFromLog(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
-            logHeader);
+        logHeader);
     calculateMaxDisplacement(header, indexData);
     indexData.close();
+
+    // Temporary verification - remove before merge!
+    if (true) {
+      File indexFile2 = Sparkey.setEnding(indexFile, ".spi2");
+      ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
+      fillFromLog(indexData2, logFile, header2, logHeader.size(), header.getDataEnd(),
+          logHeader);
+      calculateMaxDisplacement(header2, indexData2);
+      indexData2.close();
+
+      if (!Files.equal(indexFile, indexFile2)) {
+        indexFile.renameTo(Sparkey.setEnding(indexFile, ".spi1"));
+        throw new RuntimeException("Files are not equal: " + indexFile + ", " + indexFile2);
+      } else {
+        indexFile2.delete();
+      }
+    }
   }
 
   private static void calculateMaxDisplacement(IndexHeader header, RandomAccessData indexData) throws IOException {

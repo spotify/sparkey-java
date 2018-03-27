@@ -125,35 +125,36 @@ public final class IndexHeader extends CommonHeader {
     }
   }
 
-  void write(FileOutputStream stream) throws IOException {
+  byte[] asBytes() {
     ByteBuffer byteBuffer = ByteBuffer.allocate(HEADER_SIZE);
     byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
-    byteBuffer.putInt(MAGIC_NUMBER);
-    byteBuffer.putInt(majorVersion);
-    byteBuffer.putInt(minorVersion);
+    byteBuffer.putInt(MAGIC_NUMBER); // 0
+    byteBuffer.putInt(majorVersion); // 4
+    byteBuffer.putInt(minorVersion); // 8
 
-    byteBuffer.putInt(fileIdentifier);
-    byteBuffer.putInt(hashSeed);
+    byteBuffer.putInt(fileIdentifier); // 12
+    byteBuffer.putInt(hashSeed); // 16
 
-    byteBuffer.putLong(dataEnd);
-    byteBuffer.putLong(maxKeyLen);
-    byteBuffer.putLong(maxValueLen);
-    byteBuffer.putLong(numPuts);
+    byteBuffer.putLong(dataEnd); // 20
+    byteBuffer.putLong(maxKeyLen); // 28
+    byteBuffer.putLong(maxValueLen); // 36
+    byteBuffer.putLong(numPuts); // 44
 
-    byteBuffer.putLong(garbageSize);
-    byteBuffer.putLong(numEntries);
-    byteBuffer.putInt(addressSize);
-    byteBuffer.putInt(hashSize);
-    byteBuffer.putLong(hashCapacity);
-    byteBuffer.putLong(maxDisplacement);
-    byteBuffer.putInt(entryBlockBits);
-    byteBuffer.putLong(hashCollisions);
-    byteBuffer.putLong(totalDisplacement);
+    byteBuffer.putLong(garbageSize); // 52
+    byteBuffer.putLong(numEntries); // 60
+    byteBuffer.putInt(addressSize); // 68
+    byteBuffer.putInt(hashSize); // 72
+    byteBuffer.putLong(hashCapacity); // 76
+    byteBuffer.putLong(maxDisplacement); // 84
+    byteBuffer.putInt(entryBlockBits); // 92
+    byteBuffer.putLong(hashCollisions); // 96
+    byteBuffer.putLong(totalDisplacement); // 104
+    // End at 112
 
     if (byteBuffer.position() != HEADER_SIZE) {
       throw new RuntimeException("Programming error! Header size was incorrect, expected " + HEADER_SIZE + " but was " + byteBuffer.position());
     }
-    stream.write(byteBuffer.array());
+    return byteBuffer.array();
   }
 
   public int getMajorVersion() {
