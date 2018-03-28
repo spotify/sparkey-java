@@ -148,8 +148,10 @@ final class IndexHash {
 
     ReadWriteData indexData = new FileFlushingData(hashLength, indexFile, header, fsync);
 
+    long t1 = System.currentTimeMillis();
     fillFromLog(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
         logHeader);
+    long t2 = System.currentTimeMillis();
     calculateMaxDisplacement(header, indexData);
     indexData.close();
 
@@ -158,8 +160,10 @@ final class IndexHash {
       File indexFile2 = Sparkey.setEnding(indexFile, ".spi2");
       //ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
       ReadWriteData indexData2 = new ReadWriteMemMap(hashLength, indexFile2, header2, fsync);
+      long t3 = System.currentTimeMillis();
       fillFromLogSorted(indexData2, logFile, header2, logHeader.size(), header.getDataEnd(),
           logHeader);
+      long t4 = System.currentTimeMillis();
       calculateMaxDisplacement(header2, indexData2);
       indexData2.close();
 
@@ -169,6 +173,8 @@ final class IndexHash {
       } else {
         indexFile2.delete();
       }
+
+      System.out.printf("Old: %d, New: %d\n", t2 - t1, t4 - t3);
     }
   }
 
@@ -296,7 +302,12 @@ final class IndexHash {
     final BlockRandomInput logData =
         logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
 
-    final Iterator<SortHelper.Entry> iterator2 = SortHelper.sorted(logFile, start, end, hashData, hashCapacity, header.getHashSeed());
+    long t1 = System.currentTimeMillis();
+    final long maxMemory = 1*1024*1024*1024L;
+    final Iterator<SortHelper.Entry> iterator2 = SortHelper.sort(
+        logFile, start, end, hashData, hashCapacity, header.getHashSeed(), maxMemory);
+    long t2 = System.currentTimeMillis();
+    System.out.println("Sort time: " + (t2 - t1));
 
     final int maxEntriesPerBlock = logHeader.getMaxEntriesPerBlock();
     final int entryIndexbits = calcEntryBlockBits(maxEntriesPerBlock);
@@ -610,8 +621,8 @@ final class IndexHash {
       }
 
       long otherDisplacement = getDisplacement(hashCapacity, slot, hash2);
-      // TODO: skip the hash < hash2 - only useful for generating deterministic hash tables
-      if (displacement > otherDisplacement || (displacement == otherDisplacement && hash < hash2)) {
+      // TODO: skip the address < address2 - only useful for generating deterministic hash tables
+      if (displacement > otherDisplacement || (displacement == otherDisplacement && address < address2)) {
         // Steal the slot, and move the other one
         indexData.seek(pos);
         hashData.writeHash(hash, indexData);

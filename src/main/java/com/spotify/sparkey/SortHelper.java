@@ -26,6 +26,7 @@ import com.fasterxml.sort.Sorter;
 import com.google.common.primitives.UnsignedLongs;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,9 +44,13 @@ final class SortHelper {
   };
   private static final EntryDataWriterFactory ENTRY_DATA_WRITER_FACTORY = new EntryDataWriterFactory();
 
-  static Iterator<SortHelper.Entry> sorted(final File logFile, final long start, final long end,
-                                           final HashType hashData, final long hashCapacity, final int hashSeed) throws IOException {
-    final SortConfig config = new SortConfig();
+  static Iterator<SortHelper.Entry> sort(final File logFile, final long start, final long end,
+                                         final HashType hashData, final long hashCapacity, final int hashSeed,
+                                         final long maxMemory) throws IOException {
+    SortConfig config = new SortConfig();
+    if (maxMemory > 0) {
+      config = config.withMaxMemoryUsage(maxMemory);
+    }
     final EntryDataReaderFactory readerFactory = new EntryDataReaderFactory(hashCapacity);
     Sorter<SortHelper.Entry>
         sorter = new Sorter<SortHelper.Entry>(config, readerFactory, ENTRY_DATA_WRITER_FACTORY, ENTRY_COMPARATOR);
@@ -65,7 +70,11 @@ final class SortHelper {
 
     @Override
     public Entry readNext() throws IOException {
-      return new Entry(dataInputStream.readLong(), dataInputStream.readLong(), hashCapacity);
+      try {
+        return new Entry(dataInputStream.readLong(), dataInputStream.readLong(), hashCapacity);
+      } catch (EOFException e) {
+        return null;
+      }
     }
 
     @Override
@@ -184,11 +193,7 @@ final class SortHelper {
 
     @Override
     public int compareTo(final Entry o) {
-      int v = UnsignedLongs.compare(this.wantedSlot, o.wantedSlot);
-      if (v != 0) {
-        return v;
-      }
-      v = UnsignedLongs.compare(this.hash, o.hash);
+      final int v = UnsignedLongs.compare(this.wantedSlot, o.wantedSlot);
       if (v != 0) {
         return v;
       }
