@@ -35,29 +35,11 @@ final class Util {
     return ((int) b) & 0xFF;
   }
 
-  static void writeLittleEndianInt(int value, ReadWriteData data) throws IOException {
-    data.writeUnsignedByte((value) & 0xFF);
-    data.writeUnsignedByte((value >>> 8) & 0xFF);
-    data.writeUnsignedByte((value >>> 16) & 0xFF);
-    data.writeUnsignedByte((value >>> 24) & 0xFF);
-  }
-
   static void writeLittleEndianInt(int value, RandomAccessFile rw) throws IOException {
     rw.write((value) & 0xFF);
     rw.write((value >>> 8) & 0xFF);
     rw.write((value >>> 16) & 0xFF);
     rw.write((value >>> 24) & 0xFF);
-  }
-
-  static void writeLittleEndianLong(long value, ReadWriteData data) throws IOException {
-    data.writeUnsignedByte((int) ((value) & 0xFF));
-    data.writeUnsignedByte((int) ((value >>> 8) & 0xFF));
-    data.writeUnsignedByte((int) ((value >>> 16) & 0xFF));
-    data.writeUnsignedByte((int) ((value >>> 24) & 0xFF));
-    data.writeUnsignedByte((int) ((value >>> 32) & 0xFF));
-    data.writeUnsignedByte((int) ((value >>> 40) & 0xFF));
-    data.writeUnsignedByte((int) ((value >>> 48) & 0xFF));
-    data.writeUnsignedByte((int) ((value >>> 56) & 0xFF));
   }
 
   static void writeLittleEndianLong(long value, RandomAccessFile rw) throws IOException {

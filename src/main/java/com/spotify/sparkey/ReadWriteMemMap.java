@@ -72,6 +72,38 @@ final class ReadWriteMemMap implements ReadWriteData {
     }
   }
 
+  public void writeLittleEndianLong(long value) throws IOException {
+    MappedByteBuffer curChunk = getCurChunk();
+    if (curChunk.remaining() >= 8) {
+      curChunk.putLong(value);
+      return;
+    }
+
+    // Value is on the chunk boundary - edge case so it is ok if it's a bit slower.
+    writeUnsignedByte((int) ((value) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 8) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 16) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 24) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 32) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 40) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 48) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 56) & 0xFF));
+  }
+
+  public void writeLittleEndianInt(int value) throws IOException {
+    MappedByteBuffer curChunk = getCurChunk();
+    if (curChunk.remaining() >= 4) {
+      curChunk.putInt(value);
+      return;
+    }
+
+    // Value is on the chunk boundary - edge case so it is ok if it's a bit slower.
+    writeUnsignedByte((value) & 0xFF);
+    writeUnsignedByte((value >>> 8) & 0xFF);
+    writeUnsignedByte((value >>> 16) & 0xFF);
+    writeUnsignedByte((value >>> 24) & 0xFF);
+  }
+
   private MappedByteBuffer createChunk(final long offset, final long size) throws IOException {
     final MappedByteBuffer map = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_WRITE, offset, size);
     map.order(ByteOrder.LITTLE_ENDIAN);

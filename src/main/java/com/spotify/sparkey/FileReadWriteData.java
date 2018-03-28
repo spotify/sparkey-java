@@ -19,6 +19,16 @@ class FileReadWriteData implements ReadWriteData {
     this.fsync = fsync;
   }
 
+  public void writeLittleEndianLong(long value) throws IOException {
+    // RandomAccessFile uses big-endian so this needs to be reversed
+    file.writeLong(Long.reverseBytes(value));
+  }
+
+  public void writeLittleEndianInt(int value) throws IOException {
+    // RandomAccessFile uses big-endian so this needs to be reversed
+    file.writeInt(Integer.reverseBytes(value));
+  }
+
   @Override
   public void close() throws IOException {
     file.seek(0);

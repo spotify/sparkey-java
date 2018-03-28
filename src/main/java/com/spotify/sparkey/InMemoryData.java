@@ -52,6 +52,24 @@ class InMemoryData implements ReadWriteData {
     curChunk = chunks[0];
   }
 
+  public void writeLittleEndianLong(long value) throws IOException {
+    writeUnsignedByte((int) ((value) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 8) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 16) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 24) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 32) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 40) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 48) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 56) & 0xFF));
+  }
+
+  public void writeLittleEndianInt(int value) throws IOException {
+    writeUnsignedByte((value) & 0xFF);
+    writeUnsignedByte((value >>> 8) & 0xFF);
+    writeUnsignedByte((value >>> 16) & 0xFF);
+    writeUnsignedByte((value >>> 24) & 0xFF);
+  }
+
   @Override
   public void close() throws IOException {
     for (int i = 0; i < numChunks; i++) {

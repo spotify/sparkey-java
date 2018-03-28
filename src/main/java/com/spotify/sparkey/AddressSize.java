@@ -27,7 +27,7 @@ enum AddressSize {
 
     @Override
     void writeAddress(long address, ReadWriteData data) throws IOException {
-      Util.writeLittleEndianLong(address, data);
+      data.writeLittleEndianLong(address);
     }
 
     @Override
@@ -43,7 +43,7 @@ enum AddressSize {
 
     @Override
     void writeAddress(long address, ReadWriteData data) throws IOException {
-      Util.writeLittleEndianInt((int) address, data);
+      data.writeLittleEndianInt((int) address);
     }
 
     @Override
