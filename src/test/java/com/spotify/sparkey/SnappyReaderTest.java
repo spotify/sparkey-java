@@ -1,6 +1,5 @@
 package com.spotify.sparkey;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.xerial.snappy.Snappy;
 
