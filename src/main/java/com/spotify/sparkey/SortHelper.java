@@ -23,7 +23,9 @@ import com.fasterxml.sort.DataWriter;
 import com.fasterxml.sort.DataWriterFactory;
 import com.fasterxml.sort.SortConfig;
 import com.fasterxml.sort.Sorter;
-import com.google.common.primitives.UnsignedLongs;
+import com.google.common.primitives.Longs;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -39,10 +41,15 @@ final class SortHelper {
   private static final Comparator<Entry> ENTRY_COMPARATOR = new Comparator<Entry>() {
     @Override
     public int compare(final Entry o1, final Entry o2) {
-      return o1.compareTo(o2);
+      final int v = Longs.compare(o1.wantedSlot, o2.wantedSlot);
+      if (v != 0) {
+        return v;
+      }
+      return Longs.compare(o1.address, o2.address);
     }
   };
   private static final EntryDataWriterFactory ENTRY_DATA_WRITER_FACTORY = new EntryDataWriterFactory();
+  private static final int BUFFER_SIZE = 64 * 1024;
 
   static Iterator<SortHelper.Entry> sort(final File logFile, final long start, final long end,
                                          final HashType hashData, final long hashCapacity, final int hashSeed,
@@ -110,7 +117,7 @@ final class SortHelper {
 
     @Override
     public DataWriter<Entry> constructWriter(final OutputStream outputStream) {
-      return new EntryDataWriter(new DataOutputStream(outputStream));
+      return new EntryDataWriter(new DataOutputStream(new BufferedOutputStream(outputStream, BUFFER_SIZE)));
     }
   }
 
@@ -124,7 +131,7 @@ final class SortHelper {
 
     @Override
     public DataReader<Entry> constructReader(final InputStream inputStream) {
-      return new EntryDataReader(new DataInputStream(inputStream), hashCapacity);
+      return new EntryDataReader(new DataInputStream(new BufferedInputStream(inputStream, BUFFER_SIZE)), hashCapacity);
     }
   }
 
@@ -180,7 +187,7 @@ final class SortHelper {
     }
   }
 
-  static class Entry implements Comparable<Entry> {
+  final static class Entry {
     final long hash;
     final long address;
     final long wantedSlot;
@@ -189,15 +196,6 @@ final class SortHelper {
       this.hash = hash;
       this.address = address;
       this.wantedSlot = IndexHash.getWantedSlot(hash, hashCapacity);
-    }
-
-    @Override
-    public int compareTo(final Entry o) {
-      final int v = UnsignedLongs.compare(this.wantedSlot, o.wantedSlot);
-      if (v != 0) {
-        return v;
-      }
-      return UnsignedLongs.compare(this.address, o.address);
     }
 
     @Override

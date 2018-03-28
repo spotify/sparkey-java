@@ -147,6 +147,8 @@ final class IndexHash {
     long hashLength = header.getHashLength();
 
     ReadWriteData indexData = new FileFlushingData(hashLength, indexFile, header, fsync);
+    //ReadWriteData indexData = new FileReadWriteData(hashLength, indexFile, header, fsync);
+    //ReadWriteData indexData = new ReadWriteMemMap(hashLength, indexFile, header, fsync);
 
     long t1 = System.currentTimeMillis();
     fillFromLog(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
@@ -155,8 +157,10 @@ final class IndexHash {
     calculateMaxDisplacement(header, indexData);
     indexData.close();
 
+    System.out.printf("Old: %d\n", t2 - t1);
+
     // Temporary verification - remove before merge!
-    if (true) {
+    if (false) {
       File indexFile2 = Sparkey.setEnding(indexFile, ".spi2");
       //ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
       ReadWriteData indexData2 = new ReadWriteMemMap(hashLength, indexFile2, header2, fsync);
@@ -174,7 +178,7 @@ final class IndexHash {
         indexFile2.delete();
       }
 
-      System.out.printf("Old: %d, New: %d\n", t2 - t1, t4 - t3);
+      System.out.printf("New: %d\n", t4 - t3);
     }
   }
 
@@ -303,7 +307,7 @@ final class IndexHash {
         logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
 
     long t1 = System.currentTimeMillis();
-    final long maxMemory = 1*1024*1024*1024L;
+    final long maxMemory = 500*1024*1024L;
     final Iterator<SortHelper.Entry> iterator2 = SortHelper.sort(
         logFile, start, end, hashData, hashCapacity, header.getHashSeed(), maxMemory);
     long t2 = System.currentTimeMillis();
