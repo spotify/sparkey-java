@@ -156,7 +156,8 @@ final class IndexHash {
     // Temporary verification - remove before merge!
     if (true) {
       File indexFile2 = Sparkey.setEnding(indexFile, ".spi2");
-      ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
+      //ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
+      ReadWriteData indexData2 = new ReadWriteMemMap(hashLength, indexFile2, header2, fsync);
       fillFromLogSorted(indexData2, logFile, header2, logHeader.size(), header.getDataEnd(),
           logHeader);
       calculateMaxDisplacement(header2, indexData2);
