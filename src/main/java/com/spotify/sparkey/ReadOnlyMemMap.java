@@ -32,7 +32,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 final class ReadOnlyMemMap implements RandomAccessData {
-  private static final ScheduledExecutorService CLEANER = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+  static final ScheduledExecutorService CLEANER = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
     @Override
     public Thread newThread(Runnable r) {
       Thread thread = new Thread(r);

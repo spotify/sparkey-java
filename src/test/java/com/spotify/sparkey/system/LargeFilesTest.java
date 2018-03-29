@@ -52,10 +52,18 @@ public class LargeFilesTest extends BaseSystemTest {
   }
 
   @Test
-  public void testLargeIndexFile() throws IOException {
+  public void testSmallIndexFile() throws IOException {
     testLargeIndexFileInner(700000);
-    testLargeIndexFileInner(7000000);
-    testLargeIndexFileInner(70000000);
+  }
+
+  @Test
+  public void testMediumIndexFile() throws IOException {
+    testLargeIndexFileInner(15000000);
+  }
+
+  @Test
+  public void testLargeIndexFile() throws IOException {
+    testLargeIndexFileInner(50000000);
   }
 
   private void testLargeIndexFileInner(final long size) throws IOException {

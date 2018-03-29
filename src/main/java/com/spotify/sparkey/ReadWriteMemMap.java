@@ -24,6 +24,7 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 final class ReadWriteMemMap implements ReadWriteData {
   private static final long MAP_SIZE = 1 << 30;
@@ -117,9 +118,21 @@ final class ReadWriteMemMap implements ReadWriteData {
       randomAccessFile.getFD().sync();
     }
     randomAccessFile.close();
-    chunks = null;
+    final MappedByteBuffer[] chunks = this.chunks;
+    this.chunks = null;
     curChunk = null;
     Util.nonThrowingClose(randomAccessFile);
+
+    // Wait a bit with closing so that all threads have a chance to see the that
+    // chunks and curChunks are null
+    ReadOnlyMemMap.CLEANER.schedule(new Runnable() {
+      @Override
+      public void run() {
+        for (MappedByteBuffer chunk : chunks) {
+          ByteBufferCleaner.cleanMapping(chunk);
+        }
+      }
+    }, 1000, TimeUnit.MILLISECONDS);
   }
 
   @Override

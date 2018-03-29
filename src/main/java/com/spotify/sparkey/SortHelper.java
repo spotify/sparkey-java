@@ -38,7 +38,7 @@ import java.util.Iterator;
 
 final class SortHelper {
 
-  private static final Comparator<Entry> ENTRY_COMPARATOR = new Comparator<Entry>() {
+  static final Comparator<Entry> ENTRY_COMPARATOR = new Comparator<Entry>() {
     @Override
     public int compare(final Entry o1, final Entry o2) {
       final int v = Longs.compare(o1.wantedSlot, o2.wantedSlot);
@@ -48,6 +48,14 @@ final class SortHelper {
       return Longs.compare(o1.address, o2.address);
     }
   };
+
+  static final Comparator<Entry> FAST_ENTRY_COMPARATOR = new Comparator<Entry>() {
+    @Override
+    public int compare(final Entry o1, final Entry o2) {
+      return Long.signum(o1.wantedSlot - o2.wantedSlot) * 2 + Long.signum(o1.address - o2.address);
+    }
+  };
+
   private static final EntryDataWriterFactory ENTRY_DATA_WRITER_FACTORY = new EntryDataWriterFactory();
   private static final int BUFFER_SIZE = 64 * 1024;
 
@@ -60,7 +68,7 @@ final class SortHelper {
     }
     final EntryDataReaderFactory readerFactory = new EntryDataReaderFactory(hashCapacity);
     Sorter<SortHelper.Entry>
-        sorter = new Sorter<SortHelper.Entry>(config, readerFactory, ENTRY_DATA_WRITER_FACTORY, ENTRY_COMPARATOR);
+        sorter = new Sorter<SortHelper.Entry>(config, readerFactory, ENTRY_DATA_WRITER_FACTORY, FAST_ENTRY_COMPARATOR);
 
     return sorter.sort(new SortHelper.LogFileEntryReader(logFile, start, end, hashData, hashCapacity, hashSeed));
   }
@@ -192,7 +200,7 @@ final class SortHelper {
     final long address;
     final long wantedSlot;
 
-    private Entry(final long hash, final long address, final long hashCapacity) {
+    Entry(final long hash, final long address, final long hashCapacity) {
       this.hash = hash;
       this.address = address;
       this.wantedSlot = IndexHash.getWantedSlot(hash, hashCapacity);

@@ -160,7 +160,7 @@ final class IndexHash {
     System.out.printf("Old: %d\n", t2 - t1);
 
     // Temporary verification - remove before merge!
-    if (false) {
+    if (true) {
       File indexFile2 = Sparkey.setEnding(indexFile, ".spi2");
       //ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
       ReadWriteData indexData2 = new ReadWriteMemMap(hashLength, indexFile2, header2, fsync);
