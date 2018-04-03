@@ -17,7 +17,6 @@ package com.spotify.sparkey;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
-import com.google.common.io.Files;
 import com.google.common.primitives.UnsignedLongs;
 import java.io.EOFException;
 import java.io.File;
@@ -121,7 +120,10 @@ final class IndexHash {
     return i;
   }
 
-  static void createNew(File indexFile, File logFile, HashType hashType, double sparsity, boolean fsync, final int hashSeed) throws IOException {
+  static void createNew(
+      File indexFile, File logFile, HashType hashType, double sparsity,
+      boolean fsync, final int hashSeed, final long maxMemory,
+      final SparkeyWriter.ConstructionMethod wantedMethod) throws IOException {
     if (sparsity < 1.3) {
       sparsity = 1.3;
     }
@@ -139,13 +141,38 @@ final class IndexHash {
         hashSeed,
         calcEntryBlockBits(logHeader.getMaxEntriesPerBlock()));
 
-    IndexHeader header2 = new IndexHeader(logHeader.getFileIdentifier(), logHeader.getDataEnd(),
-        logHeader.getMaxKeyLen(), logHeader.getMaxValueLen(), addressSize, hashType.size(), capacity, logHeader.getNumPuts(),
-        hashSeed,
-        calcEntryBlockBits(logHeader.getMaxEntriesPerBlock()));
-
     long hashLength = header.getHashLength();
 
+
+    final boolean inMemory;
+    if (wantedMethod == SparkeyWriter.ConstructionMethod.AUTO) {
+      inMemory = hashLength <= maxMemory;
+    } else {
+      inMemory = wantedMethod == SparkeyWriter.ConstructionMethod.IN_MEMORY;
+    }
+
+    if (inMemory) {
+      writeIndexInMemory(indexFile, logFile, fsync, logHeader, header, hashLength);
+    } else {
+      writeIndexWithSorting(indexFile, logFile, fsync, logHeader, header, hashLength, maxMemory);
+    }
+  }
+
+  private static void writeIndexWithSorting(final File indexFile, final File logFile, final boolean fsync, final LogHeader logHeader,
+                                            final IndexHeader header, final long hashLength, final long maxMemory) throws IOException {
+    //ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
+    ReadWriteData indexData2 = new ReadWriteMemMap(hashLength, indexFile, header, fsync);
+    long t3 = System.currentTimeMillis();
+    fillFromLogSorted(indexData2, logFile, header, logHeader.size(), header.getDataEnd(),
+        logHeader, maxMemory);
+    long t4 = System.currentTimeMillis();
+    calculateMaxDisplacement(header, indexData2);
+    indexData2.close();
+    //System.out.printf("New: %d\n", t4 - t3);
+  }
+
+  private static void writeIndexInMemory(final File indexFile, final File logFile, final boolean fsync, final LogHeader logHeader,
+                                         final IndexHeader header, final long hashLength) throws IOException {
     ReadWriteData indexData = new FileFlushingData(hashLength, indexFile, header, fsync);
     //ReadWriteData indexData = new FileReadWriteData(hashLength, indexFile, header, fsync);
     //ReadWriteData indexData = new ReadWriteMemMap(hashLength, indexFile, header, fsync);
@@ -157,29 +184,7 @@ final class IndexHash {
     calculateMaxDisplacement(header, indexData);
     indexData.close();
 
-    System.out.printf("Old: %d\n", t2 - t1);
-
-    // Temporary verification - remove before merge!
-    if (true) {
-      File indexFile2 = Sparkey.setEnding(indexFile, ".spi2");
-      //ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
-      ReadWriteData indexData2 = new ReadWriteMemMap(hashLength, indexFile2, header2, fsync);
-      long t3 = System.currentTimeMillis();
-      fillFromLogSorted(indexData2, logFile, header2, logHeader.size(), header.getDataEnd(),
-          logHeader);
-      long t4 = System.currentTimeMillis();
-      calculateMaxDisplacement(header2, indexData2);
-      indexData2.close();
-
-      if (!Files.equal(indexFile, indexFile2)) {
-        indexFile.renameTo(Sparkey.setEnding(indexFile, ".spi1"));
-        throw new RuntimeException("Files are not equal: " + indexFile + ", " + indexFile2 + "\n" + header.toString() + "\n" + header2.toString());
-      } else {
-        indexFile2.delete();
-      }
-
-      System.out.printf("New: %d\n", t4 - t3);
-    }
+    //System.out.printf("Old: %d\n", t2 - t1);
   }
 
   private static void calculateMaxDisplacement(IndexHeader header, RandomAccessData indexData) throws IOException {
@@ -297,7 +302,7 @@ final class IndexHash {
       ReadWriteData indexData, final File logFile,
       IndexHeader header,
       final long start, final long end,
-      LogHeader logHeader) throws IOException {
+      LogHeader logHeader, final long maxMemory) throws IOException {
     final HashType hashData = header.getHashType();
     AddressSize addressData = header.getAddressData();
 
@@ -307,11 +312,10 @@ final class IndexHash {
         logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
 
     long t1 = System.currentTimeMillis();
-    final long maxMemory = 500*1024*1024L;
     final Iterator<SortHelper.Entry> iterator2 = SortHelper.sort(
         logFile, start, end, hashData, hashCapacity, header.getHashSeed(), maxMemory);
     long t2 = System.currentTimeMillis();
-    System.out.println("Sort time: " + (t2 - t1));
+    //System.out.println("Sort time: " + (t2 - t1));
 
     final int maxEntriesPerBlock = logHeader.getMaxEntriesPerBlock();
     final int entryIndexbits = calcEntryBlockBits(maxEntriesPerBlock);

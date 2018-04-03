@@ -22,6 +22,7 @@ import com.spotify.sparkey.SparkeyLogIterator;
 import com.spotify.sparkey.SparkeyReader;
 import com.spotify.sparkey.SparkeyWriter;
 
+import com.spotify.sparkey.TestSparkeyWriter;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -68,7 +69,7 @@ public class CorrectnessTest extends BaseSystemTest {
       byte[] key = "key".getBytes();
       byte[] value = expectedValue.getBytes();
       writer.put(key, new ByteArrayInputStream(value), value.length);
-      writer.writeHash();
+      TestSparkeyWriter.writeHashAndCompare(writer);
       writer.close();
 
       SparkeyReader reader = Sparkey.open(indexFile);
@@ -131,7 +132,7 @@ public class CorrectnessTest extends BaseSystemTest {
       }
     }
 
-    writer.writeHash();
+    TestSparkeyWriter.writeHashAndCompare(writer);
     writer.close();
 
 
@@ -160,7 +161,7 @@ public class CorrectnessTest extends BaseSystemTest {
       SparkeyWriter writer = Sparkey.appendOrCreate(indexFile, CompressionType.NONE, 40);
       writer.put("Key" + i, "Value" + i);
       writer.flush();
-      writer.writeHash();
+      TestSparkeyWriter.writeHashAndCompare(writer);
       writer.close();
     }
     SparkeyReader reader = Sparkey.open(indexFile);

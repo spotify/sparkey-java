@@ -16,6 +16,7 @@
 package com.spotify.sparkey;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -98,7 +99,41 @@ public interface SparkeyWriter extends Closeable {
 
   /**
    * Set the hash seed to use. Default: a random seed
+   * If set to 0, a random seed will be used.
    * @param hashSeed
    */
   void setHashSeed(int hashSeed);
+
+  /**
+   * Set the maximum amount of memory to use for index construction.
+   * Default: Runtime.freeMemory() / 2
+   * @param maxMemory
+   */
+  void setMaxMemory(long maxMemory);
+
+  /**
+   * Set which construction method to use to create the hash index.
+   * Default: AUTO
+   * @param method
+   */
+  void setConstructionMethod(ConstructionMethod method);
+
+  File getIndexFile();
+
+  enum ConstructionMethod {
+    /**
+     * Chooses construction method dynamically based on size of data and available memory.
+     */
+    AUTO,
+
+    /**
+     * Write hash index in memory
+     */
+    IN_MEMORY,
+
+    /**
+     * Sort hash entries before writing to the hash index.
+     */
+    SORTING
+  }
 }

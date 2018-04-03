@@ -296,4 +296,15 @@ public final class IndexHeader extends CommonHeader {
   public AddressSize getAddressData() {
     return addressData;
   }
+
+  @Override
+  public IndexHeader clone() {
+    try {
+      return new IndexHeader(
+          majorVersion, minorVersion, fileIdentifier, hashSeed, dataEnd, maxKeyLen, maxValueLen, garbageSize, numEntries,
+          addressSize, hashSize, hashCapacity, maxDisplacement, numPuts, entryBlockBits, hashCollisions, totalDisplacement);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
 }

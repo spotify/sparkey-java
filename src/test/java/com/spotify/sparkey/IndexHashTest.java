@@ -33,12 +33,12 @@ public class IndexHashTest {
   public void testCorruptHashFile() throws Exception {
     File indexFile = new File(dir, "test.spi");
 
-    SparkeyWriter writer = Sparkey.createNew(indexFile);
+    SparkeyWriter writer = Sparkey.createNew(indexFile, CompressionType.NONE, 1);
     for (int i = 0; i < 100; i++) {
       writer.put("key" + i, "value" + i);
     }
     writer.close();
-    writer.writeHash();
+    TestSparkeyWriter.writeHashAndCompare(writer);
 
     corruptFile(indexFile);
 

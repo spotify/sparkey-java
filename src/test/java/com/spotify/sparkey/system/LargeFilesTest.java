@@ -39,7 +39,7 @@ public class LargeFilesTest extends BaseSystemTest {
     for (int i = 0; i < 2000; i++) {
       writer.put(("key_" + i).getBytes(), value);
     }
-    writer.writeHash();
+    TestSparkeyWriter.writeHashAndCompare(writer);
     writer.close();
 
     assertTrue(logFile.length() > 2L*1024*1024*1024);
@@ -72,7 +72,7 @@ public class LargeFilesTest extends BaseSystemTest {
       writer.put(("key_" + i), "" + (i % 13));
     }
     writer.setHashType(HashType.HASH_64_BITS);
-    writer.writeHash();
+    TestSparkeyWriter.writeHashAndCompare(writer);
     writer.close();
 
     assertTrue(indexFile.length() > size * 8L);

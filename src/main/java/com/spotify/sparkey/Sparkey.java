@@ -73,7 +73,16 @@ public final class Sparkey {
    * @return a new writer,
    */
   public static SparkeyWriter appendOrCreate(File file, CompressionType compressionType, int compressionBlockSize) throws IOException {
-    return SingleThreadedSparkeyWriter.appendOrCreate(file, compressionType, compressionBlockSize);
+    File indexFile = getIndexFile(file);
+    File logFile = getLogFile(file);
+
+    LogWriter logWriter;
+    if (logFile.exists()) {
+      logWriter = LogWriter.openExisting(logFile);
+    } else {
+      logWriter = LogWriter.createNew(logFile, compressionType, compressionBlockSize);
+    }
+    return new SingleThreadedSparkeyWriter(indexFile, logWriter);
   }
 
   /**

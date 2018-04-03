@@ -22,16 +22,18 @@ import java.io.InputStream;
 import java.util.Random;
 import java.util.UUID;
 
-final class SingleThreadedSparkeyWriter implements SparkeyWriter {
-  private final LogWriter logWriter;
-  private final File logFile;
-  private final File indexFile;
-  private double sparsity;
-  private HashType hashType;
-  private boolean fsync;
-  private int hashSeed;
+class SingleThreadedSparkeyWriter implements SparkeyWriter {
+  final LogWriter logWriter;
+  final File logFile;
+  final File indexFile;
+  double sparsity;
+  HashType hashType;
+  boolean fsync;
+  int hashSeed;
+  long maxMemory = -1;
+  ConstructionMethod method = ConstructionMethod.AUTO;
 
-  private SingleThreadedSparkeyWriter(File indexFile, LogWriter logWriter) {
+  SingleThreadedSparkeyWriter(File indexFile, LogWriter logWriter) {
     this.logFile = logWriter.getFile();
     this.indexFile = indexFile;
     this.logWriter = logWriter;
@@ -94,7 +96,11 @@ final class SingleThreadedSparkeyWriter implements SparkeyWriter {
       if (hashSeed == 0) {
         hashSeed = new Random().nextInt();
       }
-      IndexHash.createNew(newFile, logFile, hashType, sparsity, fsync, hashSeed);
+      long maxMemory = this.maxMemory;
+      if (maxMemory < 0) {
+        maxMemory = Runtime.getRuntime().freeMemory() / 2;
+      }
+      IndexHash.createNew(newFile, logFile, hashType, sparsity, fsync, hashSeed, Math.max(maxMemory, 10*1024*1024L), method);
       boolean successful = Util.renameFile(newFile, indexFile);
       if (!successful) {
         throw new IOException("Could not rename " + newFile + " to " + indexFile);
@@ -127,6 +133,21 @@ final class SingleThreadedSparkeyWriter implements SparkeyWriter {
   @Override
   public void setHashSeed(final int hashSeed) {
     this.hashSeed = hashSeed;
+  }
+
+  @Override
+  public void setMaxMemory(final long maxMemory) {
+    this.maxMemory = maxMemory;
+  }
+
+  @Override
+  public void setConstructionMethod(final ConstructionMethod method) {
+    this.method = method;
+  }
+
+  @Override
+  public File getIndexFile() {
+    return indexFile;
   }
 
   @Override
