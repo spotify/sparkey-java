@@ -40,7 +40,7 @@ final class ReadWriteMemMap implements ReadWriteData {
   private int curChunkIndex;
   private volatile MappedByteBuffer curChunk;
 
-  public ReadWriteMemMap(final long size, final File file, final IndexHeader header, final boolean fsync)
+  ReadWriteMemMap(final long size, final File file, final IndexHeader header, final boolean fsync)
       throws IOException {
     this.file = file;
 
@@ -73,6 +73,7 @@ final class ReadWriteMemMap implements ReadWriteData {
     }
   }
 
+  @Override
   public void writeLittleEndianLong(long value) throws IOException {
     MappedByteBuffer curChunk = getCurChunk();
     if (curChunk.remaining() >= 8) {
@@ -91,6 +92,7 @@ final class ReadWriteMemMap implements ReadWriteData {
     writeUnsignedByte((int) ((value >>> 56) & 0xFF));
   }
 
+  @Override
   public void writeLittleEndianInt(int value) throws IOException {
     MappedByteBuffer curChunk = getCurChunk();
     if (curChunk.remaining() >= 4) {
@@ -145,6 +147,7 @@ final class ReadWriteMemMap implements ReadWriteData {
     curChunk.put((byte) value);
   }
 
+  @Override
   public void seek(long pos) throws IOException {
     if (pos > size) {
       throw corruptionException();

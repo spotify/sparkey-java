@@ -23,7 +23,6 @@ import com.fasterxml.sort.DataWriter;
 import com.fasterxml.sort.DataWriterFactory;
 import com.fasterxml.sort.SortConfig;
 import com.fasterxml.sort.Sorter;
-import com.google.common.primitives.Longs;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
@@ -39,17 +38,6 @@ import java.util.Iterator;
 final class SortHelper {
 
   static final Comparator<Entry> ENTRY_COMPARATOR = new Comparator<Entry>() {
-    @Override
-    public int compare(final Entry o1, final Entry o2) {
-      final int v = Longs.compare(o1.wantedSlot, o2.wantedSlot);
-      if (v != 0) {
-        return v;
-      }
-      return Longs.compare(o1.address, o2.address);
-    }
-  };
-
-  static final Comparator<Entry> FAST_ENTRY_COMPARATOR = new Comparator<Entry>() {
     @Override
     public int compare(final Entry o1, final Entry o2) {
       return Long.signum(o1.wantedSlot - o2.wantedSlot) * 2 + Long.signum(o1.address - o2.address);
@@ -68,7 +56,7 @@ final class SortHelper {
     }
     final EntryDataReaderFactory readerFactory = new EntryDataReaderFactory(hashCapacity);
     Sorter<SortHelper.Entry>
-        sorter = new Sorter<SortHelper.Entry>(config, readerFactory, ENTRY_DATA_WRITER_FACTORY, FAST_ENTRY_COMPARATOR);
+        sorter = new Sorter<SortHelper.Entry>(config, readerFactory, ENTRY_DATA_WRITER_FACTORY, ENTRY_COMPARATOR);
 
     return sorter.sort(new SortHelper.LogFileEntryReader(logFile, start, end, hashData, hashCapacity, hashSeed));
   }

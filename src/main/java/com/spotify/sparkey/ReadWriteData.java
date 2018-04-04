@@ -2,7 +2,7 @@ package com.spotify.sparkey;
 
 import java.io.IOException;
 
-public interface ReadWriteData extends RandomAccessData {
+interface ReadWriteData extends RandomAccessData {
 
   void writeLittleEndianLong(long value) throws IOException;
 

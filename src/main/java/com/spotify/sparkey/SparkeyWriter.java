@@ -118,8 +118,6 @@ public interface SparkeyWriter extends Closeable {
    */
   void setConstructionMethod(ConstructionMethod method);
 
-  File getIndexFile();
-
   enum ConstructionMethod {
     /**
      * Chooses construction method dynamically based on size of data and available memory.

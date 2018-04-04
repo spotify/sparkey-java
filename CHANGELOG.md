@@ -9,6 +9,13 @@
 * Various minor optimizations
 * Add dependency on com.fasterxml.util:java-merge-sort
 
+* Performance differences:
+  - Writing hash index is 2-3x slower when using sorting (but this can be avoided by setting a large max memory or explicitly
+    setting construction method to IN_MEMORY.
+  - Random lookups are 6% faster than in 2.2.1 for compressed data and 5-17% faster for uncompressed (more improvement for larger data sets)
+
+
+
 #### 2.2.1
 * Minor bug fix to avoid stack overflow for large read and write operations.
 

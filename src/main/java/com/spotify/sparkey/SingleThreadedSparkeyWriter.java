@@ -146,11 +146,6 @@ class SingleThreadedSparkeyWriter implements SparkeyWriter {
   }
 
   @Override
-  public File getIndexFile() {
-    return indexFile;
-  }
-
-  @Override
   public void put(String key, String value) throws IOException {
     logWriter.put(key, value);
   }
