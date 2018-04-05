@@ -168,7 +168,6 @@ final class IndexHash {
     long t4 = System.currentTimeMillis();
     calculateMaxDisplacement(header, indexData2);
     indexData2.close();
-    //System.out.printf("New: %d\n", t4 - t3);
   }
 
   private static void writeIndexInMemory(final File indexFile, final File logFile, final boolean fsync, final LogHeader logHeader,
@@ -184,7 +183,6 @@ final class IndexHash {
     calculateMaxDisplacement(header, indexData);
     indexData.close();
 
-    //System.out.printf("Old: %d\n", t2 - t1);
   }
 
   private static void calculateMaxDisplacement(IndexHeader header, RandomAccessData indexData) throws IOException {
@@ -279,7 +277,6 @@ final class IndexHash {
         byte[] key = entry.getKeyBuf();
         int keyLen = entry.getKeyLength();
         long hash = hashData.hash(keyLen, key, header.getHashSeed());
-        //System.out.println("Adding hash1: " + hash + ", " + address);
         switch (type) {
           case PUT:
             put(indexData, header, hashCapacity, keyLen, key,
@@ -311,11 +308,8 @@ final class IndexHash {
     final BlockRandomInput logData =
         logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
 
-    long t1 = System.currentTimeMillis();
     final Iterator<SortHelper.Entry> iterator2 = SortHelper.sort(
         logFile, start, end, hashData, hashCapacity, header.getHashSeed(), maxMemory);
-    long t2 = System.currentTimeMillis();
-    //System.out.println("Sort time: " + (t2 - t1));
 
     final int maxEntriesPerBlock = logHeader.getMaxEntriesPerBlock();
     final int entryIndexbits = calcEntryBlockBits(maxEntriesPerBlock);
@@ -328,7 +322,6 @@ final class IndexHash {
       final SparkeyReader.Type type = (entry.address & 1) == 0 ? SparkeyReader.Type.DELETE : SparkeyReader.Type.PUT;
       final long address = entry.address >>> 1;
       final long hash = entry.hash;
-      //System.out.println("Adding hash2: " + hash + ", " + address);
       switch (type) {
         case PUT:
           put(indexData, header, hashCapacity, -1, keyBuf,
@@ -577,13 +570,11 @@ final class IndexHash {
     int entryIndex = (int) (address) & entryIndexBitmask;
     long position = address >>> entryIndexBits;
 
-    //System.out.println("Wanted slot: " + wantedSlot);
     boolean mightBeCollision = true;
     while (--tries >= 0) {
       long hash2 = hashData.readHash(indexData);
       long address2 = addressData.readAddress(indexData);
       if (address2 == 0) {
-        //System.out.println("Writing " + hash + " at " + slot);
         indexData.seek(pos);
         hashData.writeHash(hash, indexData);
         addressData.writeAddress(address, indexData);
