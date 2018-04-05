@@ -37,6 +37,8 @@ import java.util.Iterator;
 
 final class SortHelper {
 
+  static final int ENTRY_SIZE = 40;
+
   static final Comparator<Entry> ENTRY_COMPARATOR = new Comparator<Entry>() {
     @Override
     public int compare(final Entry o1, final Entry o2) {
@@ -82,7 +84,7 @@ final class SortHelper {
 
     @Override
     public int estimateSizeInBytes(final Entry entry) {
-      return 8 + 8 + 16; // two longs + class info
+      return ENTRY_SIZE;
     }
 
     @Override
@@ -175,7 +177,7 @@ final class SortHelper {
 
     @Override
     public int estimateSizeInBytes(final Entry o) {
-      return 8 + 8 + 16; // Two longs + class info
+      return ENTRY_SIZE;
     }
 
     @Override

@@ -1,8 +1,9 @@
 package com.spotify.sparkey;
 
 import static com.spotify.sparkey.SortHelper.ENTRY_COMPARATOR;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
+import com.carrotsearch.sizeof.RamUsageEstimator;
 import com.google.common.primitives.Longs;
 import java.util.Comparator;
 import org.junit.Test;
@@ -41,5 +42,12 @@ public class SortHelperTest {
         }
       }
     }
+  }
+
+  @Test
+  public void testEntrySize() {
+    long size = RamUsageEstimator.sizeOf(new SortHelper.Entry(123, 456, 789));
+    assertEquals(SortHelper.ENTRY_SIZE, size);
+
   }
 }
