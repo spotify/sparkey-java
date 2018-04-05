@@ -150,7 +150,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>15.0</version>
+      <version>20.0</version> <!-- Compatible with guava [15,). Note that [21,) are compiled with java8 instead of java6-->
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -161,7 +161,7 @@
     <dependency>
       <groupId>org.xerial.snappy</groupId>
       <artifactId>snappy-java</artifactId>
-      <version>1.1.2.1</version>
+      <version>1.1.2.6</version> <!-- Last version on java6 -->
       <type>jar</type>
     </dependency>
     <dependency>
