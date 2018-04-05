@@ -4,6 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+/**
+ * Slow implementation - Use {@link ReadWriteMemMap} instead. Implemented for reference and performance comparisons.
+ */
+@Deprecated
 class FileReadWriteData implements ReadWriteData {
 
   private final RandomAccessFile file;
