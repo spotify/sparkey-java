@@ -125,7 +125,34 @@
           <show>public</show>
         </configuration>
       </plugin>
-
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.0.0-M1</version> <!-- find the latest version at http://maven.apache.org/plugins/maven-enforcer-plugin/ -->
+        <executions>
+          <execution>
+            <id>enforce-bytecode-version</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <enforceBytecodeVersion>
+                  <maxJdkVersion>1.6</maxJdkVersion>
+                </enforceBytecodeVersion>
+              </rules>
+              <fail>true</fail>
+            </configuration>
+          </execution>
+        </executions>
+        <dependencies>
+          <dependency>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>extra-enforcer-rules</artifactId>
+            <version>1.0-beta-7</version>
+          </dependency>
+        </dependencies>
+      </plugin>
     </plugins>
   </build>
   <reporting>
@@ -150,7 +177,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>20.0</version> <!-- Compatible with guava [15,). Note that [21,) are compiled with java8 instead of java6-->
+      <version>20.0</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -161,7 +188,7 @@
     <dependency>
       <groupId>org.xerial.snappy</groupId>
       <artifactId>snappy-java</artifactId>
-      <version>1.1.2.6</version> <!-- Last version on java6 -->
+      <version>1.1.2.6</version>
       <type>jar</type>
     </dependency>
     <dependency>
