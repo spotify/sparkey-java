@@ -15,18 +15,24 @@
  */
 package com.spotify.sparkey;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 
 public enum HashType {
   HASH_64_BITS(8) {
     @Override
     long readHash(RandomAccessData data) throws IOException {
-      return Util.readLittleEndianLong(data);
+      return data.readLittleEndianLong();
     }
 
     @Override
-    void writeHash(long hash, InMemoryData data) throws IOException {
-      Util.writeLittleEndianLong(hash, data);
+    void writeHash(long hash, ReadWriteData data) throws IOException {
+      data.writeLittleEndianLong(hash);
+    }
+
+    @Override
+    void writeHash(final long hash, final DataOutputStream data) throws IOException {
+      data.writeLong(hash);
     }
 
     @Override
@@ -37,12 +43,17 @@ public enum HashType {
   HASH_32_BITS(4) {
     @Override
     long readHash(RandomAccessData data) throws IOException {
-      return Util.readLittleEndianInt(data) & INT_MASK;
+      return data.readLittleEndianInt() & INT_MASK;
     }
 
     @Override
-    void writeHash(long hash, InMemoryData data) throws IOException {
-      Util.writeLittleEndianInt((int) hash, data);
+    void writeHash(long hash, ReadWriteData data) throws IOException {
+      data.writeLittleEndianInt((int) hash);
+    }
+
+    @Override
+    void writeHash(final long hash, final DataOutputStream data) throws IOException {
+      data.writeInt((int) hash);
     }
 
     @Override
@@ -62,7 +73,8 @@ public enum HashType {
 
   abstract long readHash(RandomAccessData data) throws IOException;
 
-  abstract void writeHash(long hash, InMemoryData data) throws IOException;
+  abstract void writeHash(long hash, ReadWriteData data) throws IOException;
+  abstract void writeHash(long hash, DataOutputStream data) throws IOException;
 
   abstract long hash(int keyLen, byte[] key, int seed);
 

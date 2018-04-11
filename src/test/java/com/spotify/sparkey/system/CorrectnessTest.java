@@ -22,6 +22,7 @@ import com.spotify.sparkey.SparkeyLogIterator;
 import com.spotify.sparkey.SparkeyReader;
 import com.spotify.sparkey.SparkeyWriter;
 
+import com.spotify.sparkey.TestSparkeyWriter;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
@@ -33,6 +34,16 @@ import static org.junit.Assert.fail;
 public class CorrectnessTest extends BaseSystemTest {
 
   private static final int[] SIZES = new int[]{0, 1, 2, 3, 4, 10, 100, 1000};
+
+  @Test
+  public void testTrivial() throws IOException {
+       testHelper(4, CompressionType.NONE, 0, HashType.HASH_32_BITS);
+  }
+
+  @Test
+  public void testTrivialDelete() throws IOException {
+       testHelperWithDeletes(1, CompressionType.NONE, 0, HashType.HASH_32_BITS);
+  }
 
   @Test
   public void testSimple() throws IOException {
@@ -58,7 +69,7 @@ public class CorrectnessTest extends BaseSystemTest {
       byte[] key = "key".getBytes();
       byte[] value = expectedValue.getBytes();
       writer.put(key, new ByteArrayInputStream(value), value.length);
-      writer.writeHash();
+      TestSparkeyWriter.writeHashAndCompare(writer);
       writer.close();
 
       SparkeyReader reader = Sparkey.open(indexFile);
@@ -71,6 +82,7 @@ public class CorrectnessTest extends BaseSystemTest {
     for (int i = 0; i < N; i++) {
       writer.put("Key" + i, "Value" + i);
     }
+    writer.setHashSeed(1738868818);
     writer.writeHash(hashType);
     writer.close();
 
@@ -92,6 +104,7 @@ public class CorrectnessTest extends BaseSystemTest {
     SparkeyWriter writer = Sparkey.createNew(indexFile, compressionType, compressionBlockSize);
 
     writer.setFsync(true);
+    writer.setHashSeed(-112683590);
     writer.setHashType(hashType);
 
     for (int i = 0; i < N; i++) {
@@ -119,7 +132,7 @@ public class CorrectnessTest extends BaseSystemTest {
       }
     }
 
-    writer.writeHash();
+    TestSparkeyWriter.writeHashAndCompare(writer);
     writer.close();
 
 
@@ -148,7 +161,7 @@ public class CorrectnessTest extends BaseSystemTest {
       SparkeyWriter writer = Sparkey.appendOrCreate(indexFile, CompressionType.NONE, 40);
       writer.put("Key" + i, "Value" + i);
       writer.flush();
-      writer.writeHash();
+      TestSparkeyWriter.writeHashAndCompare(writer);
       writer.close();
     }
     SparkeyReader reader = Sparkey.open(indexFile);

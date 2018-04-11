@@ -1,3 +1,21 @@
+#### 2.3.0
+* New method of creating hash indexes added: Sorting
+  By presorting the hash entries, the hash table construction can be done using less memory than the size of the hash table.
+  The cost is extra CPU time and temporary disk usage.
+  As a result, some new API methods have been added:
+  - SparkeyWriter.setHashSeed() to manually set which seed to use, for deterministic hash indexes. (Default: random)
+  - Add SparkeyWriter.setMaxMemory() to set how much memory to use for index construction (Default: free memory / 2)
+  - Add SparkeyWriter.setConstructionMethod to allow for explicit configuration of creation method to use (Default: AUTO)
+* Various minor optimizations
+* Add dependency on com.fasterxml.util:java-merge-sort
+
+* Performance differences:
+  - Writing hash index is 2-3x slower when using sorting (but this can be avoided by setting a large max memory or explicitly
+    setting construction method to IN_MEMORY.
+  - Random lookups are 6% faster than in 2.2.1 for compressed data and 5-17% faster for uncompressed (more improvement for larger data sets)
+
+
+
 #### 2.2.1
 * Minor bug fix to avoid stack overflow for large read and write operations.
 

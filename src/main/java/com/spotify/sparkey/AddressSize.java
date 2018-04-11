@@ -15,29 +15,40 @@
  */
 package com.spotify.sparkey;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 
 enum AddressSize {
   LONG() {
     @Override
     long readAddress(RandomAccessData data) throws IOException {
-      return Util.readLittleEndianLong(data);
+      return data.readLittleEndianLong();
     }
 
     @Override
-    void writeAddress(long address, InMemoryData data) throws IOException {
-      Util.writeLittleEndianLong(address, data);
+    void writeAddress(long address, ReadWriteData data) throws IOException {
+      data.writeLittleEndianLong(address);
+    }
+
+    @Override
+    void writeAddress(final long address, final DataOutputStream data) throws IOException {
+      data.writeLong(address);
     }
   },
   INT() {
     @Override
     long readAddress(RandomAccessData data) throws IOException {
-      return Util.readLittleEndianInt(data) & INT_MASK;
+      return data.readLittleEndianInt() & INT_MASK;
     }
 
     @Override
-    void writeAddress(long address, InMemoryData data) throws IOException {
-      Util.writeLittleEndianInt((int) address, data);
+    void writeAddress(long address, ReadWriteData data) throws IOException {
+      data.writeLittleEndianInt((int) address);
+    }
+
+    @Override
+    void writeAddress(final long address, final DataOutputStream data) throws IOException {
+      data.writeInt((int) address); // TODO: overflow?
     }
   };
 
@@ -45,5 +56,6 @@ enum AddressSize {
 
   abstract long readAddress(RandomAccessData data) throws IOException;
 
-  abstract void writeAddress(long address, InMemoryData data) throws IOException;
+  abstract void writeAddress(long address, ReadWriteData data) throws IOException;
+  abstract void writeAddress(long address, DataOutputStream data) throws IOException;
 }

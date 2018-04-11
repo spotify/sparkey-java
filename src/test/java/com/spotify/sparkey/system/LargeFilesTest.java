@@ -39,7 +39,7 @@ public class LargeFilesTest extends BaseSystemTest {
     for (int i = 0; i < 2000; i++) {
       writer.put(("key_" + i).getBytes(), value);
     }
-    writer.writeHash();
+    TestSparkeyWriter.writeHashAndCompare(writer);
     writer.close();
 
     assertTrue(logFile.length() > 2L*1024*1024*1024);
@@ -52,20 +52,36 @@ public class LargeFilesTest extends BaseSystemTest {
   }
 
   @Test
+  public void testSmallIndexFile() throws IOException {
+    testLargeIndexFileInner(700000);
+  }
+
+  @Test
+  public void testMediumIndexFile() throws IOException {
+    testLargeIndexFileInner(15000000);
+  }
+
+  @Test
   public void testLargeIndexFile() throws IOException {
+    testLargeIndexFileInner(50000000);
+  }
+
+  private void testLargeIndexFileInner(final long size) throws IOException {
     SparkeyWriter writer = Sparkey.createNew(indexFile, CompressionType.NONE, 1024);
-    for (int i = 0; i < 70000000; i++) {
+    for (int i = 0; i < size; i++) {
       writer.put(("key_" + i), "" + (i % 13));
     }
-    writer.writeHash(HashType.HASH_64_BITS);
+    writer.setHashType(HashType.HASH_64_BITS);
+    TestSparkeyWriter.writeHashAndCompare(writer);
     writer.close();
 
-    assertTrue(indexFile.length() > 1L*1024*1024*1024);
+    assertTrue(indexFile.length() > size * 8L);
     SparkeyReader reader = Sparkey.open(indexFile);
-    for (int i = 0; i < 70000000; i += 1000) {
-      assertEquals("" + (i % 13), reader.getAsString("key_" + i));
+    for (int i = 0; i < 1000; i++) {
+      long key = i * size / 1000L;
+      assertEquals("" + (key % 13), reader.getAsString("key_" + key));
     }
-    assertEquals(null, reader.getAsString("key_" + 70000000));
+    assertEquals(null, reader.getAsString("key_" + size));
     reader.close();
   }
 }

@@ -18,9 +18,11 @@ package com.spotify.sparkey;
 import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
 import com.google.common.primitives.UnsignedLongs;
-
-import java.io.*;
-import java.util.Random;
+import java.io.EOFException;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Iterator;
 
 final class IndexHash {
   private final File indexFile;
@@ -110,7 +112,7 @@ final class IndexHash {
     }
   }
 
-  private static int calcEntryBlockBits(int maxEntriesPerBlock) {
+  static int calcEntryBlockBits(int maxEntriesPerBlock) {
     int i = 0;
     while ((1 << i) < maxEntriesPerBlock) {
       i++;
@@ -118,7 +120,10 @@ final class IndexHash {
     return i;
   }
 
-  static void createNew(File indexFile, File logFile, HashType hashType, double sparsity, boolean fsync) throws IOException {
+  static void createNew(
+      File indexFile, File logFile, HashType hashType, double sparsity,
+      boolean fsync, final int hashSeed, final long maxMemory,
+      final SparkeyWriter.ConstructionMethod wantedMethod) throws IOException {
     if (sparsity < 1.3) {
       sparsity = 1.3;
     }
@@ -132,20 +137,55 @@ final class IndexHash {
     long capacity = 1L | (long) (logHeader.getNumPuts() * sparsity);
 
     IndexHeader header = new IndexHeader(logHeader.getFileIdentifier(), logHeader.getDataEnd(),
-            logHeader.getMaxKeyLen(), logHeader.getMaxValueLen(), addressSize, hashType.size(), capacity, logHeader.getNumPuts(), new Random().nextInt(),
-            calcEntryBlockBits(logHeader.getMaxEntriesPerBlock()));
+        logHeader.getMaxKeyLen(), logHeader.getMaxValueLen(), addressSize, hashType.size(), capacity, logHeader.getNumPuts(),
+        hashSeed,
+        calcEntryBlockBits(logHeader.getMaxEntriesPerBlock()));
 
     long hashLength = header.getHashLength();
 
-    InMemoryData indexData = new InMemoryData(hashLength);
 
-    fillFromLog(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
-            logHeader);
-    calculateMaxDisplacement(header, indexData);
-    flushToFile(indexFile, header, indexData, fsync);
+    final boolean inMemory;
+    if (wantedMethod == SparkeyWriter.ConstructionMethod.AUTO) {
+      inMemory = hashLength <= maxMemory;
+    } else {
+      inMemory = wantedMethod == SparkeyWriter.ConstructionMethod.IN_MEMORY;
+    }
+
+    if (inMemory) {
+      writeIndexInMemory(indexFile, logFile, fsync, logHeader, header, hashLength);
+    } else {
+      writeIndexWithSorting(indexFile, logFile, fsync, logHeader, header, hashLength, maxMemory);
+    }
   }
 
-  private static void calculateMaxDisplacement(IndexHeader header, InMemoryData indexData) throws IOException {
+  private static void writeIndexWithSorting(final File indexFile, final File logFile, final boolean fsync, final LogHeader logHeader,
+                                            final IndexHeader header, final long hashLength, final long maxMemory) throws IOException {
+    //ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
+    ReadWriteData indexData2 = new ReadWriteMemMap(hashLength, indexFile, header, fsync);
+    long t3 = System.currentTimeMillis();
+    fillFromLogSorted(indexData2, logFile, header, logHeader.size(), header.getDataEnd(),
+        logHeader, maxMemory);
+    long t4 = System.currentTimeMillis();
+    calculateMaxDisplacement(header, indexData2);
+    indexData2.close();
+  }
+
+  private static void writeIndexInMemory(final File indexFile, final File logFile, final boolean fsync, final LogHeader logHeader,
+                                         final IndexHeader header, final long hashLength) throws IOException {
+    ReadWriteData indexData = new FileFlushingData(hashLength, indexFile, header, fsync);
+    //ReadWriteData indexData = new FileReadWriteData(hashLength, indexFile, header, fsync);
+    //ReadWriteData indexData = new ReadWriteMemMap(hashLength, indexFile, header, fsync);
+
+    long t1 = System.currentTimeMillis();
+    fillFromLog(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
+        logHeader);
+    long t2 = System.currentTimeMillis();
+    calculateMaxDisplacement(header, indexData);
+    indexData.close();
+
+  }
+
+  private static void calculateMaxDisplacement(IndexHeader header, RandomAccessData indexData) throws IOException {
     HashType hashData = header.getHashType();
     AddressSize addressData = header.getAddressData();
 
@@ -202,32 +242,19 @@ final class IndexHash {
     return logHeader.getDataEnd() <= (1L << (30 - entryBlockBits));
   }
 
-  private static void flushToFile(File file, IndexHeader header, InMemoryData data, boolean fsync) throws IOException {
-    FileOutputStream stream = new FileOutputStream(file);
-    try {
-      header.write(stream);
-      data.flushToFile(stream);
-      stream.flush(); // Not needed for FileOutputStream, but still semantically correct
-      if (fsync) {
-        stream.getFD().sync();
-      }
-    } finally {
-      data.close();
-      stream.close();
-    }
-  }
-
   void close() {
     this.indexData.close();
     this.logData.close();
   }
 
-  private static void fillFromLog(InMemoryData indexData, File logFile, IndexHeader header, long start, long end, LogHeader logHeader) throws IOException {
+  private static void fillFromLog(ReadWriteData indexData, File logFile, IndexHeader header, long start, long end, LogHeader logHeader) throws IOException {
     SparkeyLogIterator iterator = new SparkeyLogIterator(logFile, start, end);
     BlockRandomInput logData = logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
 
     HashType hashData = header.getHashType();
     AddressSize addressData = header.getAddressData();
+    int entryIndexbits = header.getEntryBlockBits();
+    int entryBlockBitsBitmask = header.getEntryBlockBitsBitmask();
 
     long hashCapacity = header.getHashCapacity();
 
@@ -238,6 +265,7 @@ final class IndexHash {
       for (SparkeyReader.Entry entry2 : iterator) {
         // Safe cast, since the iterator is known to be a SparkeyLogIterator
         SparkeyLogIterator.Entry entry = (SparkeyLogIterator.Entry) entry2;
+        final SparkeyReader.Type type = entry.getType();
         long curBlock = entry.getPosition();
         if (curBlock != prevBlock) {
           prevBlock = curBlock;
@@ -245,19 +273,67 @@ final class IndexHash {
         } else {
           entryIndex++;
         }
-        switch (entry.getType()) {
+        final long address = (curBlock << entryIndexbits) | entryIndex;
+        byte[] key = entry.getKeyBuf();
+        int keyLen = entry.getKeyLength();
+        long hash = hashData.hash(keyLen, key, header.getHashSeed());
+        switch (type) {
           case PUT:
-            put(indexData, header, hashCapacity, entry.getKeyLength(), entry.getKeyBuf(), entry.getPosition(), entryIndex,
-                    logData, keyBuf, hashData, addressData, header.getEntryBlockBitsBitmask(), header.getEntryBlockBits());
+            put(indexData, header, hashCapacity, keyLen, key,
+                    logData, keyBuf, hashData, addressData, entryBlockBitsBitmask, entryIndexbits,
+                hash, address);
             break;
           case DELETE:
-            delete(indexData, header, hashCapacity, entry.getKeyLength(), entry.getKeyBuf(), logData, keyBuf,
-                    hashData, addressData, header.getEntryBlockBitsBitmask(), header.getEntryBlockBits());
+            delete(indexData, header, hashCapacity, keyLen, key, logData, keyBuf,
+                    hashData, addressData, entryBlockBitsBitmask, entryIndexbits,
+                hash, address);
             break;
         }
       }
     } finally {
       logData.close();
+    }
+  }
+
+  private static void fillFromLogSorted(
+      ReadWriteData indexData, final File logFile,
+      IndexHeader header,
+      final long start, final long end,
+      LogHeader logHeader, final long maxMemory) throws IOException {
+    final HashType hashData = header.getHashType();
+    AddressSize addressData = header.getAddressData();
+
+    final long hashCapacity = header.getHashCapacity();
+
+    final BlockRandomInput logData =
+        logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
+
+    final Iterator<SortHelper.Entry> iterator2 = SortHelper.sort(
+        logFile, start, end, hashData, hashCapacity, header.getHashSeed(), maxMemory);
+
+    final int maxEntriesPerBlock = logHeader.getMaxEntriesPerBlock();
+    final int entryIndexbits = calcEntryBlockBits(maxEntriesPerBlock);
+
+    final byte[] keyBuf = new byte[(int) logHeader.getMaxKeyLen()];
+    while (iterator2.hasNext()) {
+      final SortHelper.Entry entry = iterator2.next();
+
+      // Safe cast, since the iterator is known to be a SparkeyLogIterator
+      final SparkeyReader.Type type = (entry.address & 1) == 0 ? SparkeyReader.Type.DELETE : SparkeyReader.Type.PUT;
+      final long address = entry.address >>> 1;
+      final long hash = entry.hash;
+      switch (type) {
+        case PUT:
+          put(indexData, header, hashCapacity, -1, keyBuf,
+              logData, keyBuf, hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+              hash, address);
+          break;
+        case DELETE:
+          delete(indexData, header, hashCapacity, -1, keyBuf, logData, keyBuf,
+              hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+              hash, address);
+          break;
+      }
     }
   }
 
@@ -362,10 +438,10 @@ final class IndexHash {
     }
   }
 
-  private static void delete(InMemoryData indexData, IndexHeader header, long hashCapacity, int keyLen,
+  private static void delete(ReadWriteData indexData, IndexHeader header, long hashCapacity, int keyLen,
                              byte[] key, BlockRandomInput logData,
-                             byte[] keyBuf, HashType hashData, AddressSize addressData, int entryIndexBitmask, int entryIndexBits) throws IOException {
-    long hash = hashData.hash(keyLen, key, header.getHashSeed());
+                             byte[] keyBuf, HashType hashData, AddressSize addressData, int entryIndexBitmask, int entryIndexBits,
+                             final long hash, final long address) throws IOException {
     long wantedSlot = getWantedSlot(hash, hashCapacity);
 
     long pos = wantedSlot * header.getSlotSize();
@@ -374,17 +450,31 @@ final class IndexHash {
     long slot = wantedSlot;
     long displacement = 0;
 
+    int entryIndex = (int) (address) & entryIndexBitmask;
+    long position = address >>> entryIndexBits;
+
     while (true) {
       long hash2 = hashData.readHash(indexData);
-      long position2 = addressData.readAddress(indexData);
-      if (position2 == 0) {
+      long address2 = addressData.readAddress(indexData);
+      if (address2 == 0) {
         return;
       }
-      int entryIndex = (int) (position2) & entryIndexBitmask;
-      position2 >>>= entryIndexBits;
+      int entryIndex2 = (int) (address2) & entryIndexBitmask;
+      long position2 = address2 >>> entryIndexBits;
       if (hash == hash2) {
+        if (keyLen == -1) {
+          logData.seek(position);
+          skipStuff(entryIndex, logData);
+          if (0 != Util.readUnsignedVLQInt(logData)) {
+            // Not a delete entry?
+            throw new RuntimeException("Corrupt data");
+          }
+          keyLen = Util.readUnsignedVLQInt(logData);
+          logData.readFully(key, 0, keyLen);
+        }
+
         logData.seek(position2);
-        skipStuff(entryIndex, logData);
+        skipStuff(entryIndex2, logData);
         int keyLen2 = Util.readUnsignedVLQInt(logData);
         if (keyLen2 == 0) {
           throw new RuntimeException("Invalid data - reference to delete entry");
@@ -440,7 +530,7 @@ final class IndexHash {
     }
   }
 
-  private static void skipStuff(long entryIndex, BlockRandomInput logData) throws IOException {
+  static void skipStuff(long entryIndex, BlockRandomInput logData) throws IOException {
     for (int i = 0; i < entryIndex; i++) {
       int keyLen2 = Util.readUnsignedVLQInt(logData);
       int valueLen2 = Util.readUnsignedVLQInt(logData);
@@ -452,15 +542,22 @@ final class IndexHash {
     }
   }
 
-  private static void put(InMemoryData indexData, IndexHeader header, long hashCapacity, int keyLen, byte[] key,
-                          long position, int entryIndex, BlockRandomInput logData,
-                          byte[] keyBuf, HashType hashData, AddressSize addressData, int entryIndexBitmask, int entryIndexBits) throws IOException {
+  private static void put(
+      final ReadWriteData indexData, final IndexHeader header, final long hashCapacity,
+      int keyLen, byte[] key,
+      final BlockRandomInput logData,
+      byte[] keyBuf,
+      final HashType hashData,
+      final AddressSize addressData,
+      final int entryIndexBitmask,
+      final int entryIndexBits,
+      long hash,
+      long address) throws IOException {
 
     if (header.getNumEntries() >= hashCapacity) {
       throw new IOException("No free slots in the hash: " + header.getNumEntries() + " >= " + hashCapacity);
     }
 
-    long hash = hashData.hash(keyLen, key, header.getHashSeed());
     long wantedSlot = getWantedSlot(hash, hashCapacity);
 
     long pos = wantedSlot * header.getSlotSize();
@@ -470,23 +567,38 @@ final class IndexHash {
     long tries = hashCapacity;
     long slot = wantedSlot;
 
+    int entryIndex = (int) (address) & entryIndexBitmask;
+    long position = address >>> entryIndexBits;
+
     boolean mightBeCollision = true;
     while (--tries >= 0) {
       long hash2 = hashData.readHash(indexData);
-      long position2 = addressData.readAddress(indexData);
-      if (position2 == 0) {
+      long address2 = addressData.readAddress(indexData);
+      if (address2 == 0) {
         indexData.seek(pos);
         hashData.writeHash(hash, indexData);
-        addressData.writeAddress((position << entryIndexBits) | entryIndex, indexData);
+        addressData.writeAddress(address, indexData);
         header.addedEntry();
         return;
       }
 
-      int entryIndex2 = (int) (position2) & entryIndexBitmask;
-      position2 >>>= entryIndexBits;
+      int entryIndex2 = (int) (address2) & entryIndexBitmask;
+      long position2 = address2 >>> entryIndexBits;
 
 
       if (mightBeCollision && hash == hash2) {
+        if (keyLen == -1) {
+          logData.seek(position);
+          skipStuff(entryIndex, logData);
+          keyLen = Util.readUnsignedVLQInt(logData) - 1;
+          if (keyLen == -1) {
+            // This was a delete?
+            throw new RuntimeException("Corrupt data");
+          }
+          Util.readUnsignedVLQInt(logData); // Ignore value length
+          logData.readFully(key, 0, keyLen);
+        }
+
         logData.seek(position2);
         skipStuff(entryIndex2, logData);
         int keyLen2 = Util.readUnsignedVLQInt(logData);
@@ -500,7 +612,7 @@ final class IndexHash {
           if (Util.equals(keyLen, key, keyBuf)) {
             indexData.seek(pos);
             hashData.writeHash(hash, indexData);
-            addressData.writeAddress((position << entryIndexBits) | entryIndex, indexData);
+            addressData.writeAddress(address, indexData);
             header.replacedEntry(keyLen2, valueLen2);
             return;
           }
@@ -508,14 +620,16 @@ final class IndexHash {
       }
 
       long otherDisplacement = getDisplacement(hashCapacity, slot, hash2);
-      if (displacement > otherDisplacement) {
+      // TODO: skip the address < address2 - only useful for generating deterministic hash tables
+      if (displacement > otherDisplacement || (displacement == otherDisplacement && address < address2)) {
         // Steal the slot, and move the other one
         indexData.seek(pos);
         hashData.writeHash(hash, indexData);
-        addressData.writeAddress((position << entryIndexBits) | entryIndex, indexData);
+        addressData.writeAddress(address, indexData);
 
         position = position2;
         entryIndex = entryIndex2;
+        address = address2;
         displacement = otherDisplacement;
         hash = hash2;
         mightBeCollision = false;
@@ -533,7 +647,7 @@ final class IndexHash {
     throw new IOException("No free slots in the hash");
   }
 
-  private static long getWantedSlot(long hash, long capacity) {
+  static long getWantedSlot(long hash, long capacity) {
     return UnsignedLongs.remainder(hash, capacity);
   }
 

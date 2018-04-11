@@ -18,5 +18,12 @@ package com.spotify.sparkey;
 import java.io.IOException;
 
 interface RandomAccessData {
+
+  void seek(long pos) throws IOException;
+
   int readUnsignedByte() throws IOException;
+
+  int readLittleEndianInt() throws IOException;
+
+  long readLittleEndianLong() throws IOException;
 }

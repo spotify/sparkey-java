@@ -15,14 +15,15 @@
  */
 package com.spotify.sparkey;
 
-import java.io.FileOutputStream;
+import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.ArrayList;
 
-final class InMemoryData implements RandomAccessData {
+class InMemoryData implements ReadWriteData {
   private static final int CHUNK_SIZE = 1 << 30;
   private static final int BITMASK_30 = ((1 << 30) - 1);
 
-  private final byte[][] chunks;
+  protected final byte[][] chunks;
   private final long size;
   private final int numChunks;
 
@@ -35,34 +36,50 @@ final class InMemoryData implements RandomAccessData {
     if (size < 0) {
       throw new IllegalArgumentException("Negative size: " + size);
     }
-    long numFullMaps = (size - 1) >> 30;
-    if (numFullMaps >= Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("Too large size: " + size);
-    }
-    long sizeFullMaps = numFullMaps * CHUNK_SIZE;
 
-    numChunks = (int) (numFullMaps + 1);
-    chunks = new byte[numChunks][];
-    for (int i = 0; i < numFullMaps; i++) {
-      chunks[i] = new byte[CHUNK_SIZE];
+    final ArrayList<byte[]> chunksBuffer = Lists.newArrayList();
+    long offset = 0;
+    while (offset < size) {
+      long remaining = size - offset;
+      int chunkSize = (int) Math.min(remaining, CHUNK_SIZE);
+      chunksBuffer.add(new byte[chunkSize]);
+      offset += CHUNK_SIZE;
     }
-    long lastSize = size - sizeFullMaps;
-    if (lastSize > 0) {
-      chunks[numChunks - 1] = new byte[(int) lastSize];
-    }
+    chunks = chunksBuffer.toArray(new byte[chunksBuffer.size()][]);
+    numChunks = chunks.length;
 
     curChunkIndex = 0;
     curChunk = chunks[0];
   }
 
-  void close() {
+  public void writeLittleEndianLong(long value) throws IOException {
+    writeUnsignedByte((int) ((value) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 8) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 16) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 24) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 32) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 40) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 48) & 0xFF));
+    writeUnsignedByte((int) ((value >>> 56) & 0xFF));
+  }
+
+  public void writeLittleEndianInt(int value) throws IOException {
+    writeUnsignedByte((value) & 0xFF);
+    writeUnsignedByte((value >>> 8) & 0xFF);
+    writeUnsignedByte((value >>> 16) & 0xFF);
+    writeUnsignedByte((value >>> 24) & 0xFF);
+  }
+
+  @Override
+  public void close() throws IOException {
     for (int i = 0; i < numChunks; i++) {
       chunks[i] = null;
     }
     curChunk = null;
   }
 
-  void seek(long pos) throws IOException {
+  @Override
+  public void seek(long pos) throws IOException {
     if (pos > size) {
       throw new IOException("Corrupt index: referencing data outside of range");
     }
@@ -72,7 +89,8 @@ final class InMemoryData implements RandomAccessData {
     curChunkPos = ((int) pos) & BITMASK_30;
   }
 
-  void writeUnsignedByte(int value) throws IOException {
+  @Override
+  public void writeUnsignedByte(int value) throws IOException {
     if (curChunkPos == CHUNK_SIZE) {
       next();
     }
@@ -97,15 +115,19 @@ final class InMemoryData implements RandomAccessData {
   }
 
   @Override
+  public int readLittleEndianInt() throws IOException {
+    return Util.readLittleEndianIntSlowly(this);
+  }
+
+  @Override
+  public long readLittleEndianLong() throws IOException {
+    return Util.readLittleEndianLongSlowly(this);
+  }
+
+  @Override
   public String toString() {
     return "InMemoryData{" +
             "size=" + size +
             '}';
-  }
-
-  public void flushToFile(FileOutputStream stream) throws IOException {
-    for (byte[] chunk : chunks) {
-      stream.write(chunk);
-    }
   }
 }
