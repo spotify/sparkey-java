@@ -161,13 +161,11 @@ final class IndexHash {
   private static void writeIndexWithSorting(final File indexFile, final File logFile, final boolean fsync, final LogHeader logHeader,
                                             final IndexHeader header, final long hashLength, final long maxMemory) throws IOException {
     //ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
-    ReadWriteData indexData2 = new ReadWriteMemMap(hashLength, indexFile, header, fsync);
-    long t3 = System.currentTimeMillis();
-    fillFromLogSorted(indexData2, logFile, header, logHeader.size(), header.getDataEnd(),
+    ReadWriteData indexData = new ReadWriteMemMap(hashLength, indexFile, header, fsync);
+    fillFromLogSorted(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
         logHeader, maxMemory);
-    long t4 = System.currentTimeMillis();
-    calculateMaxDisplacement(header, indexData2);
-    indexData2.close();
+    calculateMaxDisplacement(header, indexData);
+    indexData.close();
   }
 
   private static void writeIndexInMemory(final File indexFile, final File logFile, final boolean fsync, final LogHeader logHeader,
@@ -176,10 +174,8 @@ final class IndexHash {
     //ReadWriteData indexData = new FileReadWriteData(hashLength, indexFile, header, fsync);
     //ReadWriteData indexData = new ReadWriteMemMap(hashLength, indexFile, header, fsync);
 
-    long t1 = System.currentTimeMillis();
     fillFromLog(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
         logHeader);
-    long t2 = System.currentTimeMillis();
     calculateMaxDisplacement(header, indexData);
     indexData.close();
 
