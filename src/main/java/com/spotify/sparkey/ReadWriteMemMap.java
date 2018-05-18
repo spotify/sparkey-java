@@ -125,16 +125,12 @@ final class ReadWriteMemMap implements ReadWriteData {
     curChunk = null;
     Util.nonThrowingClose(randomAccessFile);
 
-    // Wait a bit with closing so that all threads have a chance to see the that
-    // chunks and curChunks are null
-    ReadOnlyMemMap.CLEANER.schedule(new Runnable() {
-      @Override
-      public void run() {
-        for (MappedByteBuffer chunk : chunks) {
-          ByteBufferCleaner.cleanMapping(chunk);
-        }
-      }
-    }, 1000, TimeUnit.MILLISECONDS);
+    // Clean it up immediately since this should only be used from a single thread anyway
+    for (int i = 0; i < chunks.length; i++) {
+      final MappedByteBuffer byteBuffer = chunks[i];
+      chunks[i] = null;
+      ByteBufferCleaner.cleanMapping(byteBuffer);
+    }
   }
 
   @Override
