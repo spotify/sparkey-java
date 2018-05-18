@@ -1,3 +1,7 @@
+#### 2.3.1
+* Fix bug where file creation didnt properly close mmap immediately,
+  causing subsequent rename failures on windows
+
 #### 2.3.0
 * New method of creating hash indexes added: Sorting
   By presorting the hash entries, the hash table construction can be done using less memory than the size of the hash table.
