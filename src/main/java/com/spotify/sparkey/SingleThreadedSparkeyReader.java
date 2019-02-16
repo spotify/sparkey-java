@@ -81,7 +81,7 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
 
   /**
    * @return a new iterator that can be safely used from a single thread.
-   * Note that antries will be reused and modified, so any data you want from it must be consumed before
+   * Note that entries will be reused and modified, so any data you want from it must be consumed before
    * continuing iteration. You should not pass this entry on in any way.
    */
   @Override
@@ -121,6 +121,8 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
             }
           }
         }
+        indexHash.closeDuplicate();
+
         return false;
       }
 

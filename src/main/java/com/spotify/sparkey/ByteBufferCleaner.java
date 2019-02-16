@@ -1,62 +1,95 @@
 package com.spotify.sparkey;
 
-import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
-import java.security.AccessController;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
 
 /**
- * This code was taken from lucene. See NOTICE file for more details.
+ * This code was taken from
+ * https://stackoverflow.com/questions/2972986/how-to-unmap-a-file-from-memory-mapped-using-filechannel-in-java/19447758#19447758
  */
 class ByteBufferCleaner {
 
-  /**
-   * <code>true</code>, if this platform supports unmapping mmapped files.
-   */
-  public static final boolean UNMAP_SUPPORTED;
-  static {
-    boolean v;
+  private static final Cleaner CLEANER = findCleaner();
+
+  private static Cleaner findCleaner() {
+    // JavaSpecVer: 1.6, 1.7, 1.8, 9, 10
     try {
-      Class.forName("sun.misc.Cleaner");
-      Class.forName("java.nio.DirectByteBuffer")
-              .getMethod("cleaner");
-      v = true;
-    } catch (Exception e) {
-      v = false;
+      if (System.getProperty("java.specification.version", "99").startsWith("1.")) {
+        return new ByteBufferCleaner.OldCleaner();
+      } else {
+        return new NewCleaner();
+      }
+    } catch(Exception e) {
+      throw new Error(e);
     }
-    UNMAP_SUPPORTED = v;
   }
 
-  /**
-   * Try to unmap the buffer, this method silently fails if no support
-   * for that in the JVM. On Windows, this leads to the fact,
-   * that mmapped files cannot be modified or deleted.
-   */
   public static void cleanMapping(final MappedByteBuffer buffer) {
-    if (!UNMAP_SUPPORTED) {
-      return;
+    CLEANER.clean(buffer);
+  }
+
+  private interface Cleaner {
+    void clean(MappedByteBuffer byteBuffer);
+  }
+
+  private static class OldCleaner implements Cleaner {
+
+    @Override
+    public void clean(final MappedByteBuffer byteBuffer) {
+      try {
+        final Class<? extends MappedByteBuffer> clazz = byteBuffer.getClass();
+        final Method getCleanerMethod = clazz.getMethod("cleaner");
+        getCleanerMethod.setAccessible(true);
+        final Object cleaner = getCleanerMethod.invoke(byteBuffer);
+        if (cleaner != null) {
+          cleaner.getClass().getMethod("clean").invoke(cleaner);
+        }
+      } catch (IllegalAccessException e) {
+        throw new RuntimeException(e);
+      } catch (InvocationTargetException e) {
+        throw new RuntimeException(e);
+      } catch (NoSuchMethodException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  private static class NewCleaner implements Cleaner {
+
+    private final Method clean;
+    private final Object theUnsafe;
+
+    private NewCleaner() throws ClassNotFoundException, NoSuchFieldException, IllegalAccessException, NoSuchMethodException {
+      Class<?> unsafeClass = getUnsafeClass();
+      clean = unsafeClass.getMethod("invokeCleaner", ByteBuffer.class);
+      clean.setAccessible(true);
+      Field theUnsafeField = unsafeClass.getDeclaredField("theUnsafe");
+      theUnsafeField.setAccessible(true);
+      theUnsafe = theUnsafeField.get(null);
     }
 
-    try {
-      AccessController.doPrivileged(new PrivilegedExceptionAction<Object>() {
-        public Object run() throws Exception {
-          final Method getCleanerMethod = buffer.getClass()
-                  .getMethod("cleaner");
-          getCleanerMethod.setAccessible(true);
+    private static Class<?> getUnsafeClass() throws ClassNotFoundException {
+      try {
+        return Class.forName("sun.misc.Unsafe");
+      } catch(Exception ex) {
+        // jdk.internal.misc.Unsafe doesn't yet have an invokeCleaner() method,
+        // but that method should be added if sun.misc.Unsafe is removed.
+        return Class.forName("jdk.internal.misc.Unsafe");
+      }
+    }
 
-          final Object cleaner = getCleanerMethod.invoke(buffer);
-          if (cleaner != null) {
-            cleaner.getClass().getMethod("clean").invoke(cleaner);
-          }
-          return null;
-        }
-      });
-    } catch (PrivilegedActionException e) {
-      final IOException ioe = new IOException("unable to unmap the mapped buffer");
-      ioe.initCause(e.getCause());
-      e.printStackTrace(System.err);
+    @Override
+    public void clean(MappedByteBuffer byteBuffer) {
+      try {
+        clean.invoke(theUnsafe, byteBuffer);
+      } catch (IllegalAccessException e) {
+        throw new RuntimeException(e);
+      } catch (InvocationTargetException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }

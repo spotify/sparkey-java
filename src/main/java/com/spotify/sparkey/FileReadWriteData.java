@@ -14,10 +14,12 @@ class FileReadWriteData implements ReadWriteData {
   private final IndexHeader header;
   private final boolean fsync;
   private final int offset;
+  private boolean closed = false;
 
   FileReadWriteData(final long size, final File file, final IndexHeader header, final boolean fsync) throws IOException {
     offset = header.size();
     this.file = new RandomAccessFile(file, "rw");
+    Sparkey.incrOpenFiles();
     this.file.setLength(offset + size);
     this.header = header;
     this.fsync = fsync;
@@ -35,11 +37,16 @@ class FileReadWriteData implements ReadWriteData {
 
   @Override
   public void close() throws IOException {
+    if (closed) {
+      return;
+    }
+    closed = true;
     file.seek(0);
     file.write(header.asBytes());
     if (fsync) {
       file.getFD().sync();
     }
+    Sparkey.decrOpenFiles();
     file.close();
   }
 

@@ -73,7 +73,11 @@ public class CorrectnessTest extends BaseSystemTest {
       writer.close();
 
       SparkeyReader reader = Sparkey.open(indexFile);
-      assertEquals(expectedValue, reader.getAsString("key"));
+      try {
+        assertEquals(expectedValue, reader.getAsString("key"));
+      } finally {
+        reader.close();
+      }
     }
   }
 
@@ -134,7 +138,7 @@ public class CorrectnessTest extends BaseSystemTest {
 
     TestSparkeyWriter.writeHashAndCompare(writer);
     writer.close();
-
+    assertEquals(0, Sparkey.getOpenFiles());
 
     SparkeyReader reader = Sparkey.open(indexFile);
     for (int i = 0; i < N; i++) {
@@ -178,6 +182,17 @@ public class CorrectnessTest extends BaseSystemTest {
         testHelperWithDeletes(size, CompressionType.SNAPPY, 1024, hashType);
         testHelperWithDeletes(size, CompressionType.SNAPPY, 4096, hashType);
       }
+    }
+  }
+
+  @Test
+  public void testOverwrite() throws IOException {
+    for (int i = 0; i < 10; i++) {
+      SparkeyWriter writer = Sparkey.createNew(indexFile);
+      writer.put("A", "B");
+      writer.flush();
+      TestSparkeyWriter.writeHashAndCompare(writer);
+      writer.close();
     }
   }
 }

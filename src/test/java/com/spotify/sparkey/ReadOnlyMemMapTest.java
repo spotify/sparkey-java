@@ -1,6 +1,7 @@
 package com.spotify.sparkey;
 
 import com.google.common.collect.Lists;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -13,11 +14,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class ReadOnlyMemMapTest {
+public class ReadOnlyMemMapTest extends OpenMapsAsserter {
 
   @Test
   public void testDontRunOutOfFileDescriptors() throws Exception {
-    for (int iter = 0; iter < 10*1000; iter++) {
+    for (int iter = 0; iter < 100; iter++) {
       ReadOnlyMemMap memMap = new ReadOnlyMemMap(new File("README.md"));
       ArrayList<ReadOnlyMemMap> maps = Lists.newArrayList();
       for (int i = 0; i < 100; i++) {
@@ -28,21 +29,22 @@ public class ReadOnlyMemMapTest {
         try {
           map.readUnsignedByte();
           fail();
-        } catch (IOException e) {
+        } catch (SparkeyReaderClosedException e) {
         }
         try {
           map.seek(1);
           fail();
-        } catch (IOException e) {
+        } catch (SparkeyReaderClosedException e) {
         }
         try {
           map.skipBytes(1);
           fail();
-        } catch (IOException e) {
+        } catch (SparkeyReaderClosedException e) {
         }
       }
+      assertEquals(0, Sparkey.getOpenFiles());
+      assertEquals(0, Sparkey.getOpenMaps());
     }
-
   }
 
   @Test

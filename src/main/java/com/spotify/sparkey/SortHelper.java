@@ -60,7 +60,7 @@ final class SortHelper {
     Sorter<SortHelper.Entry>
         sorter = new Sorter<SortHelper.Entry>(config, readerFactory, ENTRY_DATA_WRITER_FACTORY, ENTRY_COMPARATOR);
 
-    return sorter.sort(new SortHelper.LogFileEntryReader(logFile, start, end, hashData, hashCapacity, hashSeed));
+    return sorter.sort(new LogFileEntryReader(logFile, start, end, hashData, hashCapacity, hashSeed));
   }
 
   private static class EntryDataReader extends DataReader<Entry> {

@@ -8,6 +8,7 @@ import com.spotify.sparkey.SparkeyReader;
 import com.spotify.sparkey.SparkeyWriter;
 import com.spotify.sparkey.system.BaseSystemTest;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
@@ -38,6 +39,15 @@ public class ThreadLocalSparkeyReaderTest extends BaseSystemTest {
     writer.close();
 
     reader = new ThreadLocalSparkeyReader(indexFile);
+  }
+
+  @Override
+  @After
+  public void tearDown() throws Exception {
+    if (reader != null) {
+      reader.close();
+    }
+    super.tearDown();
   }
 
   @Test

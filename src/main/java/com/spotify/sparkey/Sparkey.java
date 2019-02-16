@@ -18,8 +18,15 @@ package com.spotify.sparkey;
 import com.spotify.sparkey.extra.ThreadLocalSparkeyReader;
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class Sparkey {
+  /**
+   * Tracks number of memory mapped files - useful for detecting leaks
+   */
+  private static final AtomicInteger OPEN_MMAPS = new AtomicInteger();
+  private static final AtomicInteger OPEN_FILES = new AtomicInteger();
+
   private Sparkey() {
   }
 
@@ -191,4 +198,29 @@ public final class Sparkey {
   public static LogHeader getLogHeader(File file) throws IOException {
     return LogHeader.read(file);
   }
+
+  static void incrOpenMaps() {
+    OPEN_MMAPS.incrementAndGet();
+  }
+
+  static void decrOpenMaps() {
+    OPEN_MMAPS.decrementAndGet();
+  }
+
+  public static int getOpenMaps() {
+    return OPEN_MMAPS.get();
+  }
+
+  static void incrOpenFiles() {
+    OPEN_FILES.incrementAndGet();
+  }
+
+  static void decrOpenFiles() {
+    OPEN_FILES.decrementAndGet();
+  }
+
+  public static int getOpenFiles() {
+    return OPEN_FILES.get();
+  }
+
 }

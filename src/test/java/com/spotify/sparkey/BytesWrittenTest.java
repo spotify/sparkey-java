@@ -9,18 +9,20 @@ import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
 
-public class BytesWrittenTest {
+public class BytesWrittenTest extends OpenMapsAsserter {
 
   private File file;
 
   @Before
   public void setUp() throws Exception {
+    super.setUp();
     file = File.createTempFile("sparkey_test_", ".spl");
   }
 
   @After
   public void tearDown() throws Exception {
     file.delete();
+    super.tearDown();
   }
 
   @Test

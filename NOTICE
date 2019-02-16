@@ -7,8 +7,3 @@ Spotify AB (http://www.spotify.com/).
 This project includes MurmurHash3, written by Austin Appleby, which is
 placed in the public domain. The original software is available from
   https://code.google.com/p/smhasher/source/browse/trunk/MurmurHash3.cpp
-
-This project includes some code (ByteBufferCleaner) from Apache Lucene 3.6
-from the Apache Software Foundation (ASF). The code is licensed with
-Apache Licence 2.0
-

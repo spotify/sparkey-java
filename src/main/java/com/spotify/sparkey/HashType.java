@@ -66,7 +66,7 @@ public enum HashType {
   private static final long INT_MASK = (1L << 32) - 1;
   private final int size;
 
-  private HashType(int size) {
+  HashType(int size) {
     this.size = size;
   }
 

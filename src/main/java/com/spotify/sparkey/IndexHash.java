@@ -162,10 +162,13 @@ final class IndexHash {
                                             final IndexHeader header, final long hashLength, final long maxMemory) throws IOException {
     //ReadWriteData indexData2 = new FileReadWriteData(hashLength, indexFile2, header2, fsync);
     ReadWriteData indexData = new ReadWriteMemMap(hashLength, indexFile, header, fsync);
-    fillFromLogSorted(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
-        logHeader, maxMemory);
-    calculateMaxDisplacement(header, indexData);
-    indexData.close();
+    try {
+      fillFromLogSorted(indexData, logFile, header, logHeader.size(), header.getDataEnd(),
+          logHeader, maxMemory);
+      calculateMaxDisplacement(header, indexData);
+    } finally {
+      indexData.close();
+    }
   }
 
   private static void writeIndexInMemory(final File indexFile, final File logFile, final boolean fsync, final LogHeader logHeader,
@@ -304,32 +307,36 @@ final class IndexHash {
     final BlockRandomInput logData =
         logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
 
-    final Iterator<SortHelper.Entry> iterator2 = SortHelper.sort(
-        logFile, start, end, hashData, hashCapacity, header.getHashSeed(), maxMemory);
+    try {
+      final Iterator<SortHelper.Entry> iterator2 = SortHelper.sort(
+          logFile, start, end, hashData, hashCapacity, header.getHashSeed(), maxMemory);
 
-    final int maxEntriesPerBlock = logHeader.getMaxEntriesPerBlock();
-    final int entryIndexbits = calcEntryBlockBits(maxEntriesPerBlock);
+      final int maxEntriesPerBlock = logHeader.getMaxEntriesPerBlock();
+      final int entryIndexbits = calcEntryBlockBits(maxEntriesPerBlock);
 
-    final byte[] keyBuf = new byte[(int) logHeader.getMaxKeyLen()];
-    while (iterator2.hasNext()) {
-      final SortHelper.Entry entry = iterator2.next();
+      final byte[] keyBuf = new byte[(int) logHeader.getMaxKeyLen()];
+      while (iterator2.hasNext()) {
+        final SortHelper.Entry entry = iterator2.next();
 
-      // Safe cast, since the iterator is known to be a SparkeyLogIterator
-      final SparkeyReader.Type type = (entry.address & 1) == 0 ? SparkeyReader.Type.DELETE : SparkeyReader.Type.PUT;
-      final long address = entry.address >>> 1;
-      final long hash = entry.hash;
-      switch (type) {
-        case PUT:
-          put(indexData, header, hashCapacity, -1, keyBuf,
-              logData, keyBuf, hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
-              hash, address);
-          break;
-        case DELETE:
-          delete(indexData, header, hashCapacity, -1, keyBuf, logData, keyBuf,
-              hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
-              hash, address);
-          break;
+        // Safe cast, since the iterator is known to be a SparkeyLogIterator
+        final SparkeyReader.Type type = (entry.address & 1) == 0 ? SparkeyReader.Type.DELETE : SparkeyReader.Type.PUT;
+        final long address = entry.address >>> 1;
+        final long hash = entry.hash;
+        switch (type) {
+          case PUT:
+            put(indexData, header, hashCapacity, -1, keyBuf,
+                logData, keyBuf, hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+                hash, address);
+            break;
+          case DELETE:
+            delete(indexData, header, hashCapacity, -1, keyBuf, logData, keyBuf,
+                hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+                hash, address);
+            break;
+        }
       }
+    } finally {
+      logData.close();
     }
   }
 
@@ -658,6 +665,11 @@ final class IndexHash {
 
   IndexHash duplicate() {
     return new IndexHash(indexFile, logFile, header, logHeader, indexData.duplicate(), maxBlockSize, logData.duplicate());
+  }
+
+  void closeDuplicate() {
+    indexData.closeDuplicate();
+    logData.closeDuplicate();
   }
 
   private class IndexHashEntry implements SparkeyReader.Entry {

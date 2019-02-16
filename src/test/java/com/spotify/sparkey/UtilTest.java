@@ -163,6 +163,11 @@ public class UtilTest {
     public BlockRandomInput duplicate() {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public void closeDuplicate() {
+      throw new UnsupportedOperationException();
+    }
   }
 
   @Test

@@ -21,6 +21,7 @@ import com.spotify.sparkey.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -31,18 +32,27 @@ import static com.google.common.base.Preconditions.checkState;
 public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
   private final Collection<SparkeyReader> readers = Lists.newArrayList();
   private volatile ThreadLocal<SparkeyReader> threadLocalReader;
+  private final AtomicBoolean firstRead = new AtomicBoolean(false);
 
   public ThreadLocalSparkeyReader(File indexFile) throws IOException {
-    this(Sparkey.openSingleThreadedReader(indexFile));
+    this(Sparkey.openSingleThreadedReader(indexFile), true);
   }
 
   public ThreadLocalSparkeyReader(final SparkeyReader reader) {
+    this(reader, false);
+  }
+
+  private ThreadLocalSparkeyReader(final SparkeyReader reader, final boolean owner) {
     checkNotNull(reader, "reader may not be null");
 
     this.readers.add(reader);
     this.threadLocalReader = new ThreadLocal<SparkeyReader>() {
       @Override
       protected SparkeyReader initialValue() {
+        if (owner && firstRead.compareAndSet(false, true)) {
+          return reader; // No need to duplicate the reader for the first usage if we are the owner of the reader
+        }
+
         SparkeyReader r = reader.duplicate();
         synchronized (readers) {
           readers.add(r);

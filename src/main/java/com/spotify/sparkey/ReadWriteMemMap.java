@@ -24,7 +24,6 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
 
 final class ReadWriteMemMap implements ReadWriteData {
   private static final long MAP_SIZE = 1 << 30;
@@ -39,12 +38,14 @@ final class ReadWriteMemMap implements ReadWriteData {
 
   private int curChunkIndex;
   private volatile MappedByteBuffer curChunk;
+  private boolean closed = false;
 
   ReadWriteMemMap(final long size, final File file, final IndexHeader header, final boolean fsync)
       throws IOException {
     this.file = file;
 
     this.randomAccessFile = new RandomAccessFile(file, "rw");
+    Sparkey.incrOpenFiles();
     this.header = header;
     this.fsync = fsync;
     this.randomAccessFile.setLength(header.size() + size);
@@ -66,7 +67,9 @@ final class ReadWriteMemMap implements ReadWriteData {
       curChunkIndex = 0;
       curChunk = chunks[0];
       curChunk.position(0);
+      Sparkey.incrOpenMaps();
     } catch (Exception e) {
+      Sparkey.decrOpenFiles();
       this.randomAccessFile.close();
       Throwables.propagateIfPossible(e, IOException.class);
       throw Throwables.propagate(e);
@@ -114,6 +117,10 @@ final class ReadWriteMemMap implements ReadWriteData {
   }
 
   public void close() throws IOException {
+    if (closed) {
+      return;
+    }
+    closed = true;
     randomAccessFile.seek(0);
     randomAccessFile.write(header.asBytes());
     if (fsync) {
@@ -123,9 +130,11 @@ final class ReadWriteMemMap implements ReadWriteData {
     final MappedByteBuffer[] chunks = this.chunks;
     this.chunks = null;
     curChunk = null;
+    Sparkey.decrOpenFiles();
     Util.nonThrowingClose(randomAccessFile);
 
     // Clean it up immediately since this should only be used from a single thread anyway
+    Sparkey.decrOpenMaps();
     for (int i = 0; i < chunks.length; i++) {
       final MappedByteBuffer byteBuffer = chunks[i];
       chunks[i] = null;

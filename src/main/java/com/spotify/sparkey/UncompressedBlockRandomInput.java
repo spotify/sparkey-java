@@ -53,4 +53,9 @@ class UncompressedBlockRandomInput implements BlockRandomInput {
   public BlockRandomInput duplicate() {
     return new UncompressedBlockRandomInput(data.duplicate());
   }
+
+  @Override
+  public void closeDuplicate() {
+    data.closeDuplicate();
+  }
 }
