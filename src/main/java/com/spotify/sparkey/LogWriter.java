@@ -15,9 +15,8 @@
  */
 package com.spotify.sparkey;
 
-import com.google.common.base.Charsets;
-
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 
 final class LogWriter {
   private final LogHeader header;
@@ -56,11 +55,8 @@ final class LogWriter {
   }
 
   private static void truncate(File file, long size) throws IOException {
-    RandomAccessFile rw = new RandomAccessFile(file, "rw");
-    try {
+    try (RandomAccessFile rw = new RandomAccessFile(file, "rw")) {
       rw.setLength(size);
-    } finally {
-      rw.close();
     }
   }
 
@@ -94,7 +90,7 @@ final class LogWriter {
   }
 
   void put(String key, String value) throws IOException {
-    put(key.getBytes(Charsets.UTF_8), value.getBytes(Charsets.UTF_8));
+    put(key.getBytes(StandardCharsets.UTF_8), value.getBytes(StandardCharsets.UTF_8));
   }
 
   void put(byte[] key, byte[] value) throws IOException {
@@ -108,7 +104,7 @@ final class LogWriter {
   }
 
   void delete(String key) throws IOException {
-    delete(key.getBytes(Charsets.UTF_8));
+    delete(key.getBytes(StandardCharsets.UTF_8));
   }
 
   void delete(byte[] key) throws IOException {

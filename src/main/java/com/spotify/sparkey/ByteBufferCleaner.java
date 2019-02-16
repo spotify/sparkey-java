@@ -47,11 +47,7 @@ class ByteBufferCleaner {
         if (cleaner != null) {
           cleaner.getClass().getMethod("clean").invoke(cleaner);
         }
-      } catch (IllegalAccessException e) {
-        throw new RuntimeException(e);
-      } catch (InvocationTargetException e) {
-        throw new RuntimeException(e);
-      } catch (NoSuchMethodException e) {
+      } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
         throw new RuntimeException(e);
       }
     }
@@ -85,9 +81,7 @@ class ByteBufferCleaner {
     public void clean(MappedByteBuffer byteBuffer) {
       try {
         clean.invoke(theUnsafe, byteBuffer);
-      } catch (IllegalAccessException e) {
-        throw new RuntimeException(e);
-      } catch (InvocationTargetException e) {
+      } catch (IllegalAccessException | InvocationTargetException e) {
         throw new RuntimeException(e);
       }
     }

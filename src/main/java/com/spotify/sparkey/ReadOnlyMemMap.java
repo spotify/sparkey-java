@@ -15,9 +15,6 @@
  */
 package com.spotify.sparkey;
 
-import com.google.common.base.Throwables;
-import com.google.common.collect.Lists;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -50,7 +47,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
 
   ReadOnlyMemMap(File file) throws IOException {
     this.file = file;
-    this.allInstances = Collections.newSetFromMap(new IdentityHashMap<ReadOnlyMemMap, Boolean>());
+    this.allInstances = Collections.newSetFromMap(new IdentityHashMap<>());
     this.allInstances.add(this);
 
     if (mapBits > 30) {
@@ -68,7 +65,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
       if (size <= 0) {
         throw new IllegalArgumentException("Non-positive size: " + size);
       }
-      final ArrayList<MappedByteBuffer> chunksBuffer = Lists.newArrayList();
+      final ArrayList<MappedByteBuffer> chunksBuffer = new ArrayList<>();
       long offset = 0;
       while (offset < size) {
         long remaining = size - offset;
@@ -83,11 +80,10 @@ final class ReadOnlyMemMap implements RandomAccessData {
       curChunk = chunks[0];
       curChunk.position(0);
       Sparkey.incrOpenMaps();
-    } catch (Exception e) {
+    } catch (IOException | RuntimeException | Error e) {
       Sparkey.decrOpenFiles();
       this.randomAccessFile.close();
-      Throwables.propagateIfPossible(e, IOException.class);
-      throw Throwables.propagate(e);
+      throw e;
     }
   }
 

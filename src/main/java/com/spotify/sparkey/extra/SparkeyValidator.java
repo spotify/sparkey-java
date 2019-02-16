@@ -1,6 +1,5 @@
 package com.spotify.sparkey.extra;
 
-import com.google.common.base.Preconditions;
 import com.spotify.sparkey.LogHeader;
 import com.spotify.sparkey.Sparkey;
 import com.spotify.sparkey.SparkeyLogIterator;
@@ -65,7 +64,7 @@ public class SparkeyValidator {
           break;
         case DELETE:
           validateKey(logHeader, entry);
-          Preconditions.checkState(0 == entry.getValueLength());
+          checkState(0 == entry.getValueLength());
 
           // Just make sure this doesn't crash
           reader.getAsByteArray(entry.getKey());
@@ -100,8 +99,8 @@ public class SparkeyValidator {
   }
 
   private static void validateKey(LogHeader logHeader, SparkeyReader.Entry entry) {
-    Preconditions.checkState(entry.getKeyLength() <= logHeader.getMaxKeyLen());
-    Preconditions.checkState(entry.getKeyLength() == entry.getKey().length);
+    checkState(entry.getKeyLength() <= logHeader.getMaxKeyLen());
+    checkState(entry.getKeyLength() == entry.getKey().length);
   }
 
   private static void validateValue(LogHeader logHeader, SparkeyReader.Entry entry) throws IOException {
@@ -110,8 +109,14 @@ public class SparkeyValidator {
   }
 
   private static void validateValue(LogHeader logHeader, SparkeyReader.Entry entry, byte[] value) {
-    Preconditions.checkState(entry.getValueLength() <= logHeader.getMaxValueLen());
-    Preconditions.checkState(entry.getValueLength() == value.length);
+    checkState(entry.getValueLength() <= logHeader.getMaxValueLen());
+    checkState(entry.getValueLength() == value.length);
+  }
+
+  private static void checkState(boolean b) {
+    if (!b) {
+      throw new IllegalStateException();
+    }
   }
 
 

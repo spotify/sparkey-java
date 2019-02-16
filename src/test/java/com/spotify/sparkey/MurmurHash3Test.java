@@ -16,7 +16,6 @@
 package com.spotify.sparkey;
 
 import com.google.common.io.BaseEncoding;
-import com.spotify.sparkey.MurmurHash3;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

@@ -15,19 +15,15 @@
  */
 package com.spotify.sparkey.extra;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListeningExecutorService;
-
 import com.spotify.sparkey.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.Callable;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutorService;
 
 /**
  * A sparkey reader that can switch between log files at runtime.
@@ -37,7 +33,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
   private static final Logger log = LoggerFactory.getLogger(ReloadableSparkeyReader.class);
 
-  private final ListeningExecutorService executorService;
+  private final ExecutorService executorService;
 
   private volatile SparkeyReader reader;
   private volatile File currentLogFile;
@@ -49,13 +45,15 @@ public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
    * @param executorService An executor service that is used to run reload tasks on.
    * @return A future that resolves to the sparkey reader once it has loaded the log file.
    */
-  public static ListenableFuture<ReloadableSparkeyReader> fromLogFile(File logFile, ListeningExecutorService executorService) {
+  public static CompletionStage<ReloadableSparkeyReader> fromLogFile(File logFile, ExecutorService executorService) {
     ReloadableSparkeyReader reader = new ReloadableSparkeyReader(executorService);
     return reader.load(logFile);
   }
 
-  private ReloadableSparkeyReader(ListeningExecutorService executorService) {
-    checkArgument(executorService != null, "executor service must not be null");
+  private ReloadableSparkeyReader(ExecutorService executorService) {
+    if (executorService == null) {
+      throw new IllegalArgumentException("executor service must not be null");
+    }
     this.executorService = executorService;
   }
 
@@ -64,16 +62,20 @@ public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
    * @param logFile the log file to load.
    * @return A future that resolves to the sparkey reader once it has loaded the new log file.
    */
-  public ListenableFuture<ReloadableSparkeyReader> load(final File logFile) {
+  public CompletionStage<ReloadableSparkeyReader> load(final File logFile) {
     checkArgument(isValidLogFile(logFile));
-
-    return this.executorService.submit(new Callable<ReloadableSparkeyReader>() {
-      @Override
-      public ReloadableSparkeyReader call() {
-        switchReader(logFile);
-        return ReloadableSparkeyReader.this;
-      }
+    CompletableFuture<ReloadableSparkeyReader> result = new CompletableFuture<>();
+    this.executorService.submit(() -> {
+      switchReader(logFile);
+      result.complete(this);
     });
+    return result;
+  }
+
+  private void checkArgument(boolean b) {
+    if (!b) {
+      throw new IllegalArgumentException();
+    }
   }
 
   @Override
@@ -106,6 +108,12 @@ public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
       return new ThreadLocalSparkeyReader(indexFile);
     } catch (IOException ex) {
       throw new ReloadableSparkeyReaderException("couldn't create sparkey reader", ex);
+    }
+  }
+
+  private void checkNotNull(Object o) {
+    if (o == null) {
+      throw new NullPointerException();
     }
   }
 
