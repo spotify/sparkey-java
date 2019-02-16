@@ -115,6 +115,7 @@
         <version>3.0.0-M1</version>
         <configuration>
           <show>private</show>
+          <doclint>none</doclint>
         </configuration>
         <executions>
           <execution>
