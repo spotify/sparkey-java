@@ -15,22 +15,20 @@
  */
 package com.spotify.sparkey.extra;
 
-import com.google.common.collect.Lists;
 import com.spotify.sparkey.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
 /**
  * A thread-safe Sparkey Reader.
  */
 public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
-  private final Collection<SparkeyReader> readers = Lists.newArrayList();
+  private final Collection<SparkeyReader> readers = new ArrayList<>();
   private volatile ThreadLocal<SparkeyReader> threadLocalReader;
   private final AtomicBoolean firstRead = new AtomicBoolean(false);
 
@@ -43,23 +41,19 @@ public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
   }
 
   private ThreadLocalSparkeyReader(final SparkeyReader reader, final boolean owner) {
-    checkNotNull(reader, "reader may not be null");
-
+    Objects.requireNonNull(reader, "reader may not be null");
     this.readers.add(reader);
-    this.threadLocalReader = new ThreadLocal<SparkeyReader>() {
-      @Override
-      protected SparkeyReader initialValue() {
-        if (owner && firstRead.compareAndSet(false, true)) {
-          return reader; // No need to duplicate the reader for the first usage if we are the owner of the reader
-        }
-
-        SparkeyReader r = reader.duplicate();
-        synchronized (readers) {
-          readers.add(r);
-        }
-        return r;
+    this.threadLocalReader = ThreadLocal.withInitial(() -> {
+      if (owner && firstRead.compareAndSet(false, true)) {
+        return reader; // No need to duplicate the reader for the first usage if we are the owner of the reader
       }
-    };
+
+      SparkeyReader r = reader.duplicate();
+      synchronized (readers) {
+        readers.add(r);
+      }
+      return r;
+    });
   }
 
   @Override
@@ -75,13 +69,17 @@ public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
 
   @Override
   public SparkeyReader duplicate() {
-    checkState(threadLocalReader != null, "reader is closed");
+    if (threadLocalReader == null) {
+      throw new IllegalStateException("reader is closed");
+    }
     return this;
   }
 
   @Override
   protected SparkeyReader getDelegateReader() {
-    checkState(threadLocalReader != null, "reader is closed");
+    if (threadLocalReader == null) {
+      throw new IllegalStateException("reader is closed");
+    }
     return threadLocalReader.get();
   }
 

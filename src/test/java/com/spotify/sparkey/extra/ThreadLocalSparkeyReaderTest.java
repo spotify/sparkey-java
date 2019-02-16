@@ -1,7 +1,5 @@
 package com.spotify.sparkey.extra;
 
-import com.google.common.collect.Lists;
-
 import com.spotify.sparkey.CompressionType;
 import com.spotify.sparkey.Sparkey;
 import com.spotify.sparkey.SparkeyReader;
@@ -15,6 +13,7 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -62,12 +61,7 @@ public class ThreadLocalSparkeyReaderTest extends BaseSystemTest {
     final SparkeyReader localReader = reader.getDelegateReader();
 
     final ExecutorService executorService = Executors.newSingleThreadExecutor();
-    final SparkeyReader remoteReader = executorService.submit(new Callable<SparkeyReader>() {
-      @Override
-      public SparkeyReader call() throws Exception {
-        return reader.getDelegateReader();
-      }
-    }).get();
+    final SparkeyReader remoteReader = executorService.submit(() -> reader.getDelegateReader()).get();
     executorService.shutdown();
 
     assertNotSame(localReader, remoteReader);
@@ -75,15 +69,12 @@ public class ThreadLocalSparkeyReaderTest extends BaseSystemTest {
 
   @Test
   public void testClose() throws Exception {
-    final List<SparkeyReader> allReaders = Lists.newArrayList();
+    final List<SparkeyReader> allReaders = new ArrayList<>();
     final SparkeyReader reader = mock(SparkeyReader.class);
-    when(reader.duplicate()).thenAnswer(new Answer<SparkeyReader>() {
-      @Override
-      public SparkeyReader answer(InvocationOnMock invocation) throws Throwable {
-        SparkeyReader result = mock(SparkeyReader.class);
-        allReaders.add(result);
-        return result;
-      }
+    when(reader.duplicate()).thenAnswer((Answer<SparkeyReader>) invocation -> {
+      SparkeyReader result = mock(SparkeyReader.class);
+      allReaders.add(result);
+      return result;
     });
     allReaders.add(reader);
 

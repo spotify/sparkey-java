@@ -53,8 +53,7 @@ public final class LogHeader extends CommonHeader {
   }
 
   static LogHeader read(File file) throws IOException {
-    FileInputStream inputStream = new FileInputStream(file);
-    try {
+    try (FileInputStream inputStream = new FileInputStream(file)) {
       int magicNumber = Util.readLittleEndianInt(inputStream);
       if (magicNumber != MAGIC_NUMBER) {
         throw new IOException("File is not a Sparkey log file: " + file);
@@ -80,19 +79,16 @@ public final class LogHeader extends CommonHeader {
       int maxEntriesPerBlock = Util.readLittleEndianInt(inputStream);
 
       if (dataEnd > file.length()) {
-        throw new IOException("Corrupt log file '" + file.toString() +"': expected at least " + dataEnd + " size but was " + file.length());
+        throw new IOException("Corrupt log file '" + file.toString() + "': expected at least " + dataEnd + " size but was " + file.length());
       }
 
       return new LogHeader(majorVersion, minorVersion, fileIdentifier, numPuts, numDeletes, dataEnd, maxKeyLen, maxValueLen, deleteSize, CompressionType.values()[compressionType], compressionBlockSize, putSize,
               maxEntriesPerBlock);
-    } finally {
-      inputStream.close();
     }
   }
 
   void write(File file, boolean fsync) throws IOException {
-    RandomAccessFile rw = new RandomAccessFile(file, "rw");
-    try {
+    try (RandomAccessFile rw = new RandomAccessFile(file, "rw")) {
       rw.seek(0);
       Util.writeLittleEndianInt(MAGIC_NUMBER, rw);
       Util.writeLittleEndianInt(majorVersion, rw);
@@ -115,8 +111,6 @@ public final class LogHeader extends CommonHeader {
       if (fsync) {
         rw.getFD().sync();
       }
-    } finally {
-      rw.close();
     }
   }
 

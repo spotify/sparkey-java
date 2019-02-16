@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
+import java.nio.file.Files;
 import java.util.UUID;
 
 final class Util {
@@ -266,41 +267,46 @@ final class Util {
     }
   }
 
-  static boolean renameFile(File srcFile, File destFile) throws FileNotFoundException {
+  static void renameFile(File srcFile, File destFile) throws IOException {
     if (!srcFile.exists()) {
       throw new FileNotFoundException(srcFile.getPath());
     }
     if (srcFile.equals(destFile)) {
-      return true;
+      return;
     }
     if (!destFile.exists()) {
-      return srcFile.renameTo(destFile);
+      rename(srcFile, destFile);
+      return;
     }
 
     File backupFile = new File(destFile.getParent(), destFile.getName() + "-backup" + UUID.randomUUID().toString());
     if (backupFile.exists()) {
       // Edge case, but let's be safe.
-      log.warn("Expected duplicate temporary backup file: " + backupFile.getPath());
-      return false;
+      throw new IOException("Expected duplicate temporary backup file: " + backupFile.getPath());
     }
-    if (!destFile.renameTo(backupFile)) {
-      return false;
-    }
+    rename(destFile, backupFile);
     if (destFile.exists()) {
       // This is strange, it should be renamed by now. But let's be safe.
-      log.warn("Unexpected file still existing: {}, should have been renamed to: {}", destFile.getPath(), backupFile.getPath());
-      return false;
+      throw new IOException("Unexpected file still existing: " + destFile.getPath() + ", should have been renamed to: " + backupFile.getPath());
     }
 
-    if (srcFile.renameTo(destFile)) {
-      boolean deleted = backupFile.delete();
-      return true;
+    try {
+      rename(srcFile, destFile);
+      if (!backupFile.delete()) {
+        log.warn("Could not delete backup file: " + backupFile.getPath());
+      }
+    } catch (IOException e) {
+      // roll back failed rename
+      try {
+        rename(backupFile, destFile);
+      } catch (IOException e2) {
+        log.warn("Failed to roll back failed rename - file still exists: {}", backupFile);
+      }
+      throw new IOException("Could not rename " + srcFile.getPath() + " to " + destFile.getPath(), e);
     }
+  }
 
-    // roll back failed rename
-    if (!backupFile.renameTo(destFile)) {
-      log.warn("Failed to roll back failed rename - file still exists: {}", backupFile);
-    }
-    return false;
+  private static void rename(File destFile, File backupFile) throws IOException {
+    Files.move(destFile.toPath(), backupFile.toPath());
   }
 }

@@ -66,8 +66,7 @@ public final class IndexHeader extends CommonHeader {
   }
 
   static IndexHeader read(File file) throws IOException {
-    FileInputStream inputStream = new FileInputStream(file);
-    try {
+    try (FileInputStream inputStream = new FileInputStream(file)) {
       int magicNumber = Util.readLittleEndianInt(inputStream);
       if (magicNumber != MAGIC_NUMBER) {
         throw new IOException("File is not a Sparkey index file: " + file);
@@ -100,8 +99,6 @@ public final class IndexHeader extends CommonHeader {
 
       return new IndexHeader(majorVersion, minorVersion, fileIdentifier, hashSeed, dataEnd, maxKeyLen, maxValueLen, garbageSize, numEntries, addressSize, hashSize, hashCapacity, maxDisplacement,
               numPuts, entryBlockBits, hashCollisions, totalDisplacement);
-    } finally {
-      inputStream.close();
     }
   }
 

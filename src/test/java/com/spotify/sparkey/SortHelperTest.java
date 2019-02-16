@@ -4,22 +4,13 @@ import static com.spotify.sparkey.SortHelper.ENTRY_COMPARATOR;
 import static org.junit.Assert.assertEquals;
 
 import com.carrotsearch.sizeof.RamUsageEstimator;
-import com.google.common.primitives.Longs;
 import java.util.Comparator;
 import org.junit.Test;
 
 public class SortHelperTest {
 
-  static final Comparator<SortHelper.Entry> REFERENCE_COMPARATOR = new Comparator<SortHelper.Entry>() {
-    @Override
-    public int compare(final SortHelper.Entry o1, final SortHelper.Entry o2) {
-      final int v = Longs.compare(o1.wantedSlot, o2.wantedSlot);
-      if (v != 0) {
-        return v;
-      }
-      return Longs.compare(o1.address, o2.address);
-    }
-  };
+  static final Comparator<SortHelper.Entry> REFERENCE_COMPARATOR =
+          Comparator.comparing(SortHelper.Entry::getWantedSlot).thenComparing(SortHelper.Entry::getAddress);
 
   @Test
   public void testComparator() {

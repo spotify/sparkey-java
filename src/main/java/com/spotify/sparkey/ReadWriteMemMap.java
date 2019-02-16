@@ -15,8 +15,6 @@
  */
 package com.spotify.sparkey;
 
-import com.google.common.base.Throwables;
-import com.google.common.collect.Lists;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -42,6 +40,11 @@ final class ReadWriteMemMap implements ReadWriteData {
 
   ReadWriteMemMap(final long size, final File file, final IndexHeader header, final boolean fsync)
       throws IOException {
+    this.size = size;
+    if (this.size <= 0) {
+      throw new IllegalArgumentException("Non-positive size: " + this.size);
+    }
+
     this.file = file;
 
     this.randomAccessFile = new RandomAccessFile(file, "rw");
@@ -50,11 +53,7 @@ final class ReadWriteMemMap implements ReadWriteData {
     this.fsync = fsync;
     this.randomAccessFile.setLength(header.size() + size);
     try {
-      this.size = size;
-      if (this.size <= 0) {
-        throw new IllegalArgumentException("Non-positive size: " + this.size);
-      }
-      final ArrayList<MappedByteBuffer> chunksBuffer = Lists.newArrayList();
+      final ArrayList<MappedByteBuffer> chunksBuffer = new ArrayList<>();
       long offset = 0;
       while (offset < this.size) {
         long remaining = this.size - offset;
@@ -68,11 +67,10 @@ final class ReadWriteMemMap implements ReadWriteData {
       curChunk = chunks[0];
       curChunk.position(0);
       Sparkey.incrOpenMaps();
-    } catch (Exception e) {
+    } catch (IOException | RuntimeException |Error e) {
       Sparkey.decrOpenFiles();
       this.randomAccessFile.close();
-      Throwables.propagateIfPossible(e, IOException.class);
-      throw Throwables.propagate(e);
+      throw e;
     }
   }
 

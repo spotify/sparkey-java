@@ -101,10 +101,7 @@ class SingleThreadedSparkeyWriter implements SparkeyWriter {
         maxMemory = Runtime.getRuntime().freeMemory() / 2;
       }
       IndexHash.createNew(newFile, logFile, hashType, sparsity, fsync, hashSeed, Math.max(maxMemory, 10*1024*1024L), method);
-      boolean successful = Util.renameFile(newFile, indexFile);
-      if (!successful) {
-        throw new IOException("Could not rename " + newFile + " to " + indexFile);
-      }
+      Util.renameFile(newFile, indexFile);
     } finally {
       boolean deleted = newFile.delete();
     }

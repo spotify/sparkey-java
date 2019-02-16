@@ -19,8 +19,7 @@ class FileFlushingData extends InMemoryData {
 
   @Override
   public void close() throws IOException {
-    FileOutputStream stream = new FileOutputStream(file);
-    try {
+    try (FileOutputStream stream = new FileOutputStream(file)) {
       stream.write(header.asBytes());
       for (byte[] chunk : chunks) {
         stream.write(chunk);
@@ -31,7 +30,6 @@ class FileFlushingData extends InMemoryData {
       }
     } finally {
       super.close();
-      stream.close();
     }
   }
 }

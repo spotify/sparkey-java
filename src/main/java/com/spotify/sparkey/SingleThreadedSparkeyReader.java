@@ -15,9 +15,8 @@
  */
 package com.spotify.sparkey;
 
-import com.google.common.base.Charsets;
-
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -56,12 +55,12 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
 
   @Override
   public String getAsString(String key) throws IOException {
-    byte[] keyBytes = key.getBytes(Charsets.UTF_8);
+    byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
     Entry res = getAsEntry(keyBytes);
     if (res == null) {
       return null;
     }
-    return new String(res.getValue(), Charsets.UTF_8);
+    return new String(res.getValue(), StandardCharsets.UTF_8);
   }
 
   @Override

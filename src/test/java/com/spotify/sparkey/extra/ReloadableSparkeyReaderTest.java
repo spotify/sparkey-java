@@ -54,25 +54,21 @@ public class ReloadableSparkeyReaderTest extends OpenMapsAsserter {
 
   @Test
   public void testFromLogFile() throws ExecutionException, InterruptedException, IOException {
-    final ReloadableSparkeyReader reader = ReloadableSparkeyReader.fromLogFile(logFile1, executorService).get();
-    try {
+    try (ReloadableSparkeyReader reader = ReloadableSparkeyReader.fromLogFile(logFile1, executorService)
+            .toCompletableFuture().get()) {
       assertEquals("value1", reader.getAsString("key1"));
-    } finally {
-      reader.close();
     }
   }
 
   @Test
   public void testReload() throws ExecutionException, InterruptedException, IOException {
-    final ReloadableSparkeyReader reader = ReloadableSparkeyReader.fromLogFile(logFile1, executorService).get();
-    try {
-      reader.load(logFile2).get();
+    try (ReloadableSparkeyReader reader = ReloadableSparkeyReader.fromLogFile(logFile1, executorService)
+            .toCompletableFuture().get()) {
+      reader.load(logFile2).toCompletableFuture().get();
       assertEquals("value2", reader.getAsString("key2"));
 
-      reader.load(logFile1).get();
+      reader.load(logFile1).toCompletableFuture().get();
       assertEquals("value1", reader.getAsString("key1"));
-    } finally {
-      reader.close();
     }
   }
 

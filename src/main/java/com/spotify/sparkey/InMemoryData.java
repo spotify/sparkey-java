@@ -15,7 +15,6 @@
  */
 package com.spotify.sparkey;
 
-import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -37,7 +36,7 @@ class InMemoryData implements ReadWriteData {
       throw new IllegalArgumentException("Negative size: " + size);
     }
 
-    final ArrayList<byte[]> chunksBuffer = Lists.newArrayList();
+    final ArrayList<byte[]> chunksBuffer = new ArrayList<>();
     long offset = 0;
     while (offset < size) {
       long remaining = size - offset;
