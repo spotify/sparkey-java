@@ -16,7 +16,9 @@
 package com.spotify.sparkey.system;
 
 import com.spotify.sparkey.OpenMapsAsserter;
+import com.spotify.sparkey.ReadOnlyMemMapTest;
 import com.spotify.sparkey.Sparkey;
+import com.spotify.sparkey.UtilTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,6 +32,7 @@ public class BaseSystemTest extends OpenMapsAsserter {
   @Before
   public void setUp() throws Exception {
     super.setUp();
+    UtilTest.setMapBits(10);
     indexFile = File.createTempFile("sparkey", ".spi");
     logFile = Sparkey.getLogFile(indexFile);
     indexFile.deleteOnExit();

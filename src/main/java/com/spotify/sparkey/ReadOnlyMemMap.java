@@ -30,8 +30,11 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 
 final class ReadOnlyMemMap implements RandomAccessData {
-  private static final long MAP_SIZE = 1 << 30;
-  private static final long BITMASK_30 = ((1L << 30) - 1);
+  // Not marked as final to support tweaking for test purposes
+  static int MAP_SIZE_BITS = 30;
+  private final int mapBits = MAP_SIZE_BITS;
+  private final long mapSize = 1 << mapBits;
+  private final long mapBitmask = ((1L << mapBits) - 1);
   private final File file;
 
   private volatile MappedByteBuffer[] chunks;
@@ -50,6 +53,14 @@ final class ReadOnlyMemMap implements RandomAccessData {
     this.allInstances = Collections.newSetFromMap(new IdentityHashMap<ReadOnlyMemMap, Boolean>());
     this.allInstances.add(this);
 
+    if (mapBits > 30) {
+      throw new IllegalStateException("Map bits may not exceed 30");
+    }
+
+    if (mapBits < 10) {
+      throw new IllegalStateException("Map bits may not be less than 10");
+    }
+
     this.randomAccessFile = new RandomAccessFile(file, "r");
     Sparkey.incrOpenFiles();
     try {
@@ -61,9 +72,9 @@ final class ReadOnlyMemMap implements RandomAccessData {
       long offset = 0;
       while (offset < size) {
         long remaining = size - offset;
-        long chunkSize = Math.min(remaining, MAP_SIZE);
+        long chunkSize = Math.min(remaining, mapSize);
         chunksBuffer.add(createChunk(offset, chunkSize));
-        offset += MAP_SIZE;
+        offset += mapSize;
       }
       chunks = chunksBuffer.toArray(new MappedByteBuffer[chunksBuffer.size()]);
       numChunks = chunks.length;
@@ -141,11 +152,11 @@ final class ReadOnlyMemMap implements RandomAccessData {
     if (pos > size) {
       throw corruptionException();
     }
-    int partIndex = (int) (pos >>> 30);
+    int partIndex = (int) (pos >>> mapBits);
     curChunkIndex = partIndex;
     MappedByteBuffer[] chunks = getChunks();
     MappedByteBuffer curChunk = chunks[partIndex];
-    curChunk.position((int) (pos & BITMASK_30));
+    curChunk.position((int) (pos & mapBitmask));
     this.curChunk = curChunk;
   }
 
