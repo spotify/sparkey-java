@@ -114,4 +114,9 @@ final class SnappyRandomReader implements BlockRandomInput {
     return duplicate;
   }
 
+  @Override
+  public void closeDuplicate() {
+    data.closeDuplicate();
+  }
+
 }

@@ -3,6 +3,7 @@ package com.spotify.sparkey.extra;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.spotify.sparkey.CompressionType;
+import com.spotify.sparkey.OpenMapsAsserter;
 import com.spotify.sparkey.Sparkey;
 import com.spotify.sparkey.SparkeyWriter;
 import org.junit.After;
@@ -16,13 +17,14 @@ import java.util.concurrent.Executors;
 
 import static org.junit.Assert.assertEquals;
 
-public class ReloadableSparkeyReaderTest {
+public class ReloadableSparkeyReaderTest extends OpenMapsAsserter {
   private final ListeningExecutorService executorService = MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
   private File logFile1;
   private File logFile2;
 
   @Before
   public void setUp() throws Exception {
+    super.setUp();
     logFile1 = createLogFile("key1", "value1");
     logFile2 = createLogFile("key2", "value2");
 
@@ -31,11 +33,12 @@ public class ReloadableSparkeyReaderTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws Exception {
     logFile1.delete();
     Sparkey.getIndexFile(logFile1).delete();
     logFile2.delete();
     Sparkey.getIndexFile(logFile2).delete();
+    super.tearDown();
   }
 
   private static File createLogFile(String key, String value) throws IOException {
@@ -52,18 +55,25 @@ public class ReloadableSparkeyReaderTest {
   @Test
   public void testFromLogFile() throws ExecutionException, InterruptedException, IOException {
     final ReloadableSparkeyReader reader = ReloadableSparkeyReader.fromLogFile(logFile1, executorService).get();
-    assertEquals("value1", reader.getAsString("key1"));
+    try {
+      assertEquals("value1", reader.getAsString("key1"));
+    } finally {
+      reader.close();
+    }
   }
 
   @Test
   public void testReload() throws ExecutionException, InterruptedException, IOException {
     final ReloadableSparkeyReader reader = ReloadableSparkeyReader.fromLogFile(logFile1, executorService).get();
+    try {
+      reader.load(logFile2).get();
+      assertEquals("value2", reader.getAsString("key2"));
 
-    reader.load(logFile2).get();
-    assertEquals("value2", reader.getAsString("key2"));
-
-    reader.load(logFile1).get();
-    assertEquals("value1", reader.getAsString("key1"));
+      reader.load(logFile1).get();
+      assertEquals("value1", reader.getAsString("key1"));
+    } finally {
+      reader.close();
+    }
   }
 
   @Test(expected = IllegalArgumentException.class)

@@ -70,6 +70,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
       {
 
         final InputStream stream2 = new BufferedInputStream(new FileInputStream(logFile), 128 * 1024);
+        Sparkey.incrOpenFiles();
         stream2.skip(start);
 
         stream = header.getCompressionType().createBlockInput(stream2, header.getCompressionBlockSize(), start);
@@ -82,6 +83,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
         private final Entry entry = new Entry(stream, keyBuf);
         private boolean ready = false;
         private int entryIndex;
+        private boolean closed = false;
 
         public boolean hasNext() {
           if (ready) {
@@ -91,7 +93,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
             entry.stream.skipRemaining();
             pos = stream.getBlockPosition();
             if (pos >= end) {
-              Util.nonThrowingClose(stream);
+              closeStream();
               return false;
             }
             if (pos == prevPos) {
@@ -111,7 +113,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
             try {
               first = Util.readUnsignedVLQInt(stream);
             } catch (EOFException e) {
-              Util.nonThrowingClose(stream);
+              closeStream();
               return false;
             }
             int second = Util.readUnsignedVLQInt(stream);
@@ -132,9 +134,18 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
             ready = true;
             return true;
           } catch (IOException e) {
-            Util.nonThrowingClose(stream);
+            closeStream();
             throw new RuntimeException(e);
           }
+        }
+
+        private void closeStream() {
+          if (closed) {
+            return;
+          }
+          closed = true;
+          Sparkey.decrOpenFiles();
+          Util.nonThrowingClose(stream);
         }
 
         public Entry next() {

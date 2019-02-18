@@ -15,19 +15,24 @@
  */
 package com.spotify.sparkey.system;
 
+import com.spotify.sparkey.OpenMapsAsserter;
+import com.spotify.sparkey.ReadOnlyMemMapTest;
 import com.spotify.sparkey.Sparkey;
+import com.spotify.sparkey.UtilTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
 
-public class BaseSystemTest {
+public class BaseSystemTest extends OpenMapsAsserter {
   protected File indexFile;
   protected File logFile;
 
   @Before
   public void setUp() throws Exception {
+    super.setUp();
+    UtilTest.setMapBits(10);
     indexFile = File.createTempFile("sparkey", ".spi");
     logFile = Sparkey.getLogFile(indexFile);
     indexFile.deleteOnExit();
@@ -35,9 +40,10 @@ public class BaseSystemTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws Exception {
     indexFile.delete();
     logFile.delete();
+    super.tearDown();
   }
 
   @Test

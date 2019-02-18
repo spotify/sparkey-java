@@ -8,7 +8,7 @@ import java.io.IOException;
 /**
  * Tests AddressSize
  */
-public class AddressSizeTest {
+public class AddressSizeTest extends OpenMapsAsserter {
 
 
 

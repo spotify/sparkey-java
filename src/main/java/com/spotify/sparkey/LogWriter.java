@@ -23,6 +23,7 @@ final class LogWriter {
   private final LogHeader header;
   private final File file;
   private final BlockOutput logStream;
+  private boolean closed;
 
   private LogWriter(File file, CompressionType compressionType, int compressionBlockSize) throws IOException {
     this.file = file;
@@ -47,6 +48,7 @@ final class LogWriter {
   private static BlockOutput setup(LogHeader header, File file) throws IOException {
     truncate(file, header.getDataEnd());
     FileOutputStream fileOutputStream = new FileOutputStream(file, true);
+    Sparkey.incrOpenFiles();
     FileDescriptor fd = fileOutputStream.getFD();
     OutputStream stream = new BufferedOutputStream(fileOutputStream, 1024 * 1024);
     return header.getCompressionType().createBlockOutput(fd, stream, header.getCompressionBlockSize(),
@@ -82,7 +84,12 @@ final class LogWriter {
   }
 
   void close(boolean fsync) throws IOException {
+    if (closed) {
+      return;
+    }
+    closed = true;
     logStream.close(fsync);
+    Sparkey.decrOpenFiles();
     writeHeader(fsync);
   }
 

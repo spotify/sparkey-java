@@ -16,20 +16,18 @@
 package com.spotify.sparkey.system;
 
 import com.spotify.sparkey.*;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 
 import static org.junit.Assert.*;
 
-// Ignore since it requires a lot of memory to run.
-@Ignore
 public class LargeFilesTest extends BaseSystemTest {
   @Test
   public void testLargeLogFile() throws IOException {
+    UtilTest.setMapBits(10);
     String expectedValue = "value";
-    while (expectedValue.length() < 1024*1024) {
+    while (expectedValue.length() < 5*1024) { // Larger than a map chunk
       expectedValue += expectedValue;
     }
 
@@ -42,7 +40,7 @@ public class LargeFilesTest extends BaseSystemTest {
     TestSparkeyWriter.writeHashAndCompare(writer);
     writer.close();
 
-    assertTrue(logFile.length() > 2L*1024*1024*1024);
+    assertTrue(logFile.length() > 2000 * 5 * 1024);
     SparkeyReader reader = Sparkey.open(indexFile);
     for (int i = 0; i < 2000; i += 100) {
       assertEquals(expectedValue, reader.getAsString("key_" + i));
@@ -53,17 +51,17 @@ public class LargeFilesTest extends BaseSystemTest {
 
   @Test
   public void testSmallIndexFile() throws IOException {
-    testLargeIndexFileInner(700000);
+    testLargeIndexFileInner(7000);
   }
 
   @Test
   public void testMediumIndexFile() throws IOException {
-    testLargeIndexFileInner(15000000);
+    testLargeIndexFileInner(150000);
   }
 
   @Test
   public void testLargeIndexFile() throws IOException {
-    testLargeIndexFileInner(50000000);
+    testLargeIndexFileInner(500000);
   }
 
   private void testLargeIndexFileInner(final long size) throws IOException {

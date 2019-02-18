@@ -21,6 +21,10 @@ import static org.junit.Assert.fail;
  */
 public class UtilTest {
 
+  public static void setMapBits(int bits) {
+    ReadOnlyMemMap.MAP_SIZE_BITS = bits;
+  }
+
   @Test
   public void testUnsignedByte() {
     assertEquals(0, Util.unsignedByte((byte) 0));
@@ -161,6 +165,11 @@ public class UtilTest {
 
     @Override
     public BlockRandomInput duplicate() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void closeDuplicate() {
       throw new UnsupportedOperationException();
     }
   }
