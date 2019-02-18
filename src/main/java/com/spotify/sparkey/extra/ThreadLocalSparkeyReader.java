@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -40,10 +41,7 @@ public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
   }
 
   private ThreadLocalSparkeyReader(final SparkeyReader reader, final boolean owner) {
-    if (reader == null) {
-      throw new NullPointerException("reader may not be null");
-    }
-
+    Objects.requireNonNull(reader, "reader may not be null");
     this.readers.add(reader);
     this.threadLocalReader = ThreadLocal.withInitial(() -> {
       if (owner && firstRead.compareAndSet(false, true)) {

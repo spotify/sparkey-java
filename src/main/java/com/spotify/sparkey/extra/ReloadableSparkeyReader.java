@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
@@ -88,7 +89,7 @@ public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
   }
 
   private SparkeyReader createFromLogFile(File logFile) {
-    checkNotNull(logFile);
+    Objects.requireNonNull((Object) logFile);
     checkArgument(logFile.exists());
     checkArgument(logFile.getName().endsWith(".spl"));
 
@@ -108,12 +109,6 @@ public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
       return new ThreadLocalSparkeyReader(indexFile);
     } catch (IOException ex) {
       throw new ReloadableSparkeyReaderException("couldn't create sparkey reader", ex);
-    }
-  }
-
-  private void checkNotNull(Object o) {
-    if (o == null) {
-      throw new NullPointerException();
     }
   }
 

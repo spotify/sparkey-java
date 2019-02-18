@@ -648,7 +648,7 @@ final class IndexHash {
   }
 
   static long getWantedSlot(long hash, long capacity) {
-    return remainder(hash, capacity);
+    return Long.remainderUnsigned(hash, capacity);
   }
 
   private static long getDisplacement(long capacity, long slot, long hash) {
@@ -809,68 +809,6 @@ final class IndexHash {
     public boolean markSupported() {
       return false;
     }
-  }
-
-  /**
-   * Returns dividend % divisor, where the dividend and divisor are treated as unsigned 64-bit
-   * quantities.
-   *
-   * Inlined from Google Guava 20.0
-   *
-   * @param dividend the dividend (numerator)
-   * @param divisor the divisor (denominator)
-   * @throws ArithmeticException if divisor is 0
-   * @since 11.0
-   */
-  private static long remainder(long dividend, long divisor) {
-    if (divisor < 0) { // i.e., divisor >= 2^63:
-      if (compareUnsigned(dividend, divisor) < 0) {
-        return dividend; // dividend < divisor
-      } else {
-        return dividend - divisor; // dividend >= divisor
-      }
-    }
-
-    // Optimization - use signed modulus if dividend < 2^63
-    if (dividend >= 0) {
-      return dividend % divisor;
-    }
-
-    /*
-     * Otherwise, approximate the quotient, check, and correct if necessary. Our approximation is
-     * guaranteed to be either exact or one less than the correct value. This follows from the fact
-     * that floor(floor(x)/i) == floor(x/i) for any real x and integer i != 0. The proof is not
-     * quite trivial.
-     */
-    long quotient = ((dividend >>> 1) / divisor) << 1;
-    long rem = dividend - quotient * divisor;
-    return rem - (compareUnsigned(rem, divisor) >= 0 ? divisor : 0);
-  }
-
-  /**
-   * Compares the two specified {@code long} values, treating them as unsigned values between
-   * {@code 0} and {@code 2^64 - 1} inclusive.
-   *
-   * Inlined from Google Guava 20.0
-   *
-   * @param a the first unsigned {@code long} to compare
-   * @param b the second unsigned {@code long} to compare
-   * @return a negative value if {@code a} is less than {@code b}; a positive value if {@code a} is
-   *     greater than {@code b}; or zero if they are equal
-   */
-  private static int compareUnsigned(long a, long b) {
-    return Long.compare(flip(a), flip(b));
-  }
-
-  /**
-   * A (self-inverse) bijection which converts the ordering on unsigned longs to the ordering on
-   * longs, that is, {@code a <= b} as unsigned longs if and only if {@code flip(a) <= flip(b)} as
-   * signed longs.
-   *
-   * Inlined from Google Guava 20.0
-   */
-  private static long flip(long a) {
-    return a ^ Long.MIN_VALUE;
   }
 
 }

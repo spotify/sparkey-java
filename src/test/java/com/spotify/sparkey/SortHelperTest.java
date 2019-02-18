@@ -9,13 +9,8 @@ import org.junit.Test;
 
 public class SortHelperTest {
 
-  static final Comparator<SortHelper.Entry> REFERENCE_COMPARATOR = (o1, o2) -> {
-    final int v = Long.compare(o1.wantedSlot, o2.wantedSlot);
-    if (v != 0) {
-      return v;
-    }
-    return Long.compare(o1.address, o2.address);
-  };
+  static final Comparator<SortHelper.Entry> REFERENCE_COMPARATOR =
+          Comparator.comparing(SortHelper.Entry::getWantedSlot).thenComparing(SortHelper.Entry::getAddress);
 
   @Test
   public void testComparator() {
