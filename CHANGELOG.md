@@ -1,4 +1,11 @@
-#### 2.3.3
+#### 3.0.0
+* Compiles as Java 8, up from Java 6.
+* Removed Guava as a dependency.
+* Upgraded Snappy dependency.
+* Optimized sorting-based hash file creation slightly.
+* Changed API from ListenableFuture to CompletionStage in ReloadableSparkeyReader.
+
+#### 2.3.2
 * Add automatic-module-name for better module support.
 * Running close() on a SparkeyReader will now synchronously unmap the files.
   This may block for 100 ms if the reader has been duplicated (typically when used from multiple threads).

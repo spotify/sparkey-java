@@ -22,7 +22,15 @@ See [changelog](CHANGELOG.md).
 
 Sparkey is meant to be used as a library embedded in other software.
 
-To import it with maven, use this:
+To import it with maven, use this for Java 8 or higher:
+
+    <dependency>
+      <groupId>com.spotify.sparkey</groupId>
+      <artifactId>sparkey</artifactId>
+      <version>3.0.0</version>
+    </dependency>
+
+Use this for Java 6 or 7:
 
     <dependency>
       <groupId>com.spotify.sparkey</groupId>
@@ -40,48 +48,56 @@ Apache License, Version 2.0
 
 ### Performance
 
-This data is the direct output from running
+This data is the direct output from running the benchmarks via IntelliJ, using the JMH plugin
+on a machine with `Intel(R) Core(TM) i7-7500U CPU @ 2.70GHz`
 
-    mvn clean package install && (cd benchmark; mvn clean package)
-    scp benchmark/target/microbenchmarks.jar $TESTMACHINE:
+#### Random lookups
+
+    Benchmark             (numElements)  (type)   Mode  Cnt        Score         Error  Units
+    LookupBenchmark.test           1000    NONE  thrpt    4  4768851.493 ±  934818.190  ops/s
+    LookupBenchmark.test          10000    NONE  thrpt    4  4404571.185 ±  952648.631  ops/s
+    LookupBenchmark.test         100000    NONE  thrpt    4  3892021.755 ±  560657.509  ops/s
+    LookupBenchmark.test        1000000    NONE  thrpt    4  2748648.598 ± 1345168.410  ops/s
+    LookupBenchmark.test       10000000    NONE  thrpt    4  1921539.397 ±   64678.755  ops/s
+    LookupBenchmark.test      100000000    NONE  thrpt    4     8576.763 ±   10666.193  ops/s
+    LookupBenchmark.test           1000  SNAPPY  thrpt    4   776222.884 ±   46536.257  ops/s
+    LookupBenchmark.test          10000  SNAPPY  thrpt    4   707242.387 ±  460934.026  ops/s
+    LookupBenchmark.test         100000  SNAPPY  thrpt    4   651857.795 ±  975531.050  ops/s
+    LookupBenchmark.test        1000000  SNAPPY  thrpt    4   791848.718 ±   19363.131  ops/s
+    LookupBenchmark.test       10000000  SNAPPY  thrpt    4   700438.201 ±   27910.579  ops/s
+    LookupBenchmark.test      100000000  SNAPPY  thrpt    4   681790.103 ±   45388.918  ops/s
+
+Here we see that performance goes down slightly as more elements are added. This is caused by:
+* More frequent CPU cache misses.
+* More page faults.
+
+If you can mlock the full dataset, the performance should be more predictable.
+
+#### Appending data
+
+    Benchmark                   (type)   Mode  Cnt         Score         Error  Units
+    AppendBenchmark.testMedium    NONE  thrpt    4   1595668.598 ±  850581.241  ops/s
+    AppendBenchmark.testMedium  SNAPPY  thrpt    4    919539.081 ±  205638.008  ops/s
+    AppendBenchmark.testSmall     NONE  thrpt    4   9800098.075 ±  707288.665  ops/s
+    AppendBenchmark.testSmall   SNAPPY  thrpt    4  20227222.636 ± 7567353.506  ops/s
+
+This is mostly disk bound, CPU is not fully utilized. So even though Snappy uses more CPU, it's still faster
+because there's less data to write to disk, especially when the keys and values are small.
+(The score is number of appends, not amount of data, so this may be slightly misleading)
     
-and then running this on the test machine:
+#### Writing hash file
 
-    java -jar microbenchmarks.jar com.spotify.sparkey.system.*.*
+    Benchmark                (constructionMethod)  (numElements)  Mode  Cnt   Score   Error  Units
+    WriteHashBenchmark.test             IN_MEMORY           1000    ss    4   0.003 ± 0.001   s/op
+    WriteHashBenchmark.test             IN_MEMORY          10000    ss    4   0.009 ± 0.016   s/op
+    WriteHashBenchmark.test             IN_MEMORY         100000    ss    4   0.035 ± 0.088   s/op
+    WriteHashBenchmark.test             IN_MEMORY        1000000    ss    4   0.273 ± 0.120   s/op
+    WriteHashBenchmark.test             IN_MEMORY       10000000    ss    4   4.862 ± 0.970   s/op
+    WriteHashBenchmark.test               SORTING           1000    ss    4   0.005 ± 0.033   s/op
+    WriteHashBenchmark.test               SORTING          10000    ss    4   0.014 ± 0.008   s/op
+    WriteHashBenchmark.test               SORTING         100000    ss    4   0.070 ± 0.111   s/op
+    WriteHashBenchmark.test               SORTING        1000000    ss    4   0.835 ± 0.310   s/op
+    WriteHashBenchmark.test               SORTING       10000000    ss    4  13.919 ± 1.908   s/op
 
-on the same machine ((Intel(R) Xeon(R) CPU L5630 @ 2.13GHz))
-as the performance benchmark for the sparkey c implementation, so the numbers should
-be somewhat comparable.
-
-    Benchmark                            (numElements) (type)   Mode   Samples         Mean   Mean error    Units
-    c.s.s.s.AppendBenchmark.testMedium             N/A   NONE  thrpt       100   560514.462    11164.792    ops/s
-    c.s.s.s.AppendBenchmark.testMedium             N/A SNAPPY  thrpt       100   287809.906     5216.655    ops/s
-    c.s.s.s.AppendBenchmark.testSmall              N/A   NONE  thrpt       100  2530425.989   106629.449    ops/s
-    c.s.s.s.AppendBenchmark.testSmall              N/A SNAPPY  thrpt       100  2909965.740   114540.700    ops/s
-    
-    c.s.s.s.LookupBenchmark.test                  1000   NONE  thrpt       100  1583592.318    44701.721    ops/s
-    c.s.s.s.LookupBenchmark.test                  1000 SNAPPY  thrpt       100   401894.168     6929.453    ops/s
-    c.s.s.s.LookupBenchmark.test                 10000   NONE  thrpt       100  1505772.744    44702.055    ops/s
-    c.s.s.s.LookupBenchmark.test                 10000 SNAPPY  thrpt       100   417876.461     7232.855    ops/s
-    c.s.s.s.LookupBenchmark.test                100000   NONE  thrpt       100  1328646.838    35313.306    ops/s
-    c.s.s.s.LookupBenchmark.test                100000 SNAPPY  thrpt       100   422015.707     5738.393    ops/s
-    c.s.s.s.LookupBenchmark.test               1000000   NONE  thrpt       100  1132310.981    34490.731    ops/s
-    c.s.s.s.LookupBenchmark.test               1000000 SNAPPY  thrpt       100   387936.344     6120.736    ops/s
-    c.s.s.s.LookupBenchmark.test              10000000   NONE  thrpt       100   963257.371    15601.812    ops/s
-    c.s.s.s.LookupBenchmark.test              10000000 SNAPPY  thrpt       100   388512.642     1823.866    ops/s
-    c.s.s.s.LookupBenchmark.test             100000000   NONE  thrpt        80   764810.198    23815.241    ops/s
-    c.s.s.s.LookupBenchmark.test             100000000 SNAPPY  thrpt       100   367202.525     4695.112    ops/s
-    
-    c.s.s.s.WriteHashBenchmark.test          100000000    N/A     ss       100       86.003        2.437        s
-    c.s.s.s.WriteHashBenchmark.test           10000000    N/A     ss       100        6.772        0.116        s
-    c.s.s.s.WriteHashBenchmark.test            1000000    N/A     ss       100        0.424        0.012        s
-    c.s.s.s.WriteHashBenchmark.test             100000    N/A     ss       100        0.046        0.000        s
-    c.s.s.s.WriteHashBenchmark.test              10000    N/A     ss       100        0.006        0.001        s
-    c.s.s.s.WriteHashBenchmark.test               1000    N/A     ss       100        0.008        0.001        s
-
-Some notes on the results:
-* The AppendBenchmark is bottlenecking on disk write rather than CPU.
-* The lookup performance degrades somewhat as more elements are added. It is unclear exactly what causes this,
-  but it is likely a combination of page cache misses, cpu cache misses and algorithmic complexity of the hash algorithm.
-* The writeHash performance appears to be mostly linear, the actual superlinear behaviour is possibly due to
-  page cache misses and algorithmic complexity of the hash algorithm.
+Writing using the in-memory method is faster, but only works if you can keep the full hash file in memory while
+building it. Sorting is about 3x slower, but is more reliably for very large data sets.

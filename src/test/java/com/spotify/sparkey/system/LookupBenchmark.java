@@ -65,11 +65,11 @@ public class LookupBenchmark {
     logFile.delete();
   }
 
-  @Param({"NONE", "SNAPPY"})
-  public String type;
-
   @Param({"1000", "10000", "100000", "1000000", "10000000", "100000000"})
   public int numElements;
+
+  @Param({"NONE", "SNAPPY"})
+  public String type;
 
   @Benchmark
   @BenchmarkMode(Mode.Throughput)
