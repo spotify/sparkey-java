@@ -1,3 +1,9 @@
+#### 2.3.3
+* Add automatic-module-name for better module support.
+* Running close() on a SparkeyReader will now synchronously unmap the files.
+  This may block for 100 ms if the reader has been duplicated (typically when used from multiple threads).
+* Fixed some bugs with unclosed files in certain cases. As an effect of this, it is more stable on Windows. 
+
 #### 2.3.1
 * Fix bug where file creation didnt properly close mmap immediately,
   causing subsequent rename failures on windows
