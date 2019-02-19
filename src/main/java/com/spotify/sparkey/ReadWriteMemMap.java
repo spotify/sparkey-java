@@ -67,7 +67,7 @@ final class ReadWriteMemMap implements ReadWriteData {
       curChunk = chunks[0];
       curChunk.position(0);
       Sparkey.incrOpenMaps();
-    } catch (IOException | RuntimeException |Error e) {
+    } catch (Throwable e) {
       Sparkey.decrOpenFiles();
       this.randomAccessFile.close();
       throw e;

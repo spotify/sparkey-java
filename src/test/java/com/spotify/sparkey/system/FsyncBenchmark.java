@@ -15,24 +15,43 @@
  */
 package com.spotify.sparkey.system;
 
-import com.spotify.sparkey.*;
-import org.openjdk.jmh.annotations.*;
-import org.openjdk.jmh.logic.BlackHole;
+import com.spotify.sparkey.CompressionType;
+import com.spotify.sparkey.Sparkey;
+import com.spotify.sparkey.SparkeyWriter;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OperationsPerInvocation;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Warmup;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 @State(Scope.Benchmark)
-@Warmup(iterations = 4)
-@Measurement(iterations = 10)
-public class LookupBenchmark {
+@Warmup(iterations = 2)
+@Measurement(iterations = 4)
+@Fork(value = 1, warmups = 0)
+public class FsyncBenchmark {
 
   private File indexFile;
   private File logFile;
-  private SparkeyReader reader;
-  private Random random;
+  private SparkeyWriter writer;
+
+  @Param({"NONE", "SNAPPY"})
+  public String type;
+
+  @Param({"true", "false"})
+  public boolean fsync;
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
@@ -46,35 +65,25 @@ public class LookupBenchmark {
     indexFile.delete();
     logFile.delete();
 
-    SparkeyWriter writer = Sparkey.createNew(indexFile, compressionType, 1024);
-    for (int i = 0; i < numElements; i++) {
-      writer.put("key_" + i, "value_" + i);
-    }
-    writer.writeHash();
-    writer.close();
-
-    reader = Sparkey.open(indexFile);
-    random = new Random(891273791623L);
-
+    writer = Sparkey.createNew(indexFile, compressionType, 1024);
+    writer.setFsync(fsync);
   }
 
   @TearDown(Level.Trial)
   public void tearDown() throws IOException {
-    reader.close();
+    writer.close();
     indexFile.delete();
     logFile.delete();
   }
 
-  @Param({"NONE", "SNAPPY"})
-  public String type;
-
-  @Param({"1000", "10000", "100000", "1000000", "10000000", "100000000"})
-  public int numElements;
-
-  @GenerateMicroBenchmark
+  @Benchmark
   @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
-  public String test() throws IOException {
-    return reader.getAsString("key_" + random.nextInt(numElements));
+  @OperationsPerInvocation(1000)
+  public void testFsync() throws IOException {
+    for (int i = 0; i < 1000; i++) {
+      writer.put("key" , "value");
+    }
+    writer.flush();
   }
 }

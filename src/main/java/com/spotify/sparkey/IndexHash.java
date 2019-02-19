@@ -87,7 +87,7 @@ final class IndexHash {
       indexHash = new IndexHash(indexFile, logFile, header, logHeader, indexData, maxBlockSize, logData);
       indexHash.validate();
       return indexHash;
-    } catch (IOException | RuntimeException | Error e) {
+    } catch (Throwable e) {
       if (indexHash != null) {
         indexHash.close();
       } else {
