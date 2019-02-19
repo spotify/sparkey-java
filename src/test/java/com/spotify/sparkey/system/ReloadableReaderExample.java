@@ -46,7 +46,7 @@ public class ReloadableReaderExample {
     // create dummy log/index files, and load the reader from them
     final File logFile = new File("reloadabletest.spl");
     create(Sparkey.getIndexFile(logFile));
-    final ReloadableSparkeyReader reader = ReloadableSparkeyReader.fromLogFile(logFile, executorService).get();
+    final ReloadableSparkeyReader reader = ReloadableSparkeyReader.fromLogFile(logFile, executorService).toCompletableFuture().get();
 
     // should be ignored (same file)
     reader.load(logFile);

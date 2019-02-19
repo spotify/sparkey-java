@@ -72,11 +72,8 @@ public class CorrectnessTest extends BaseSystemTest {
       TestSparkeyWriter.writeHashAndCompare(writer);
       writer.close();
 
-      SparkeyReader reader = Sparkey.open(indexFile);
-      try {
+      try (SparkeyReader reader = Sparkey.open(indexFile)) {
         assertEquals(expectedValue, reader.getAsString("key"));
-      } finally {
-        reader.close();
       }
     }
   }

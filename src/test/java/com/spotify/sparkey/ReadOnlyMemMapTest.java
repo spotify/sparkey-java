@@ -1,7 +1,5 @@
 package com.spotify.sparkey;
 
-import com.google.common.collect.Lists;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -20,7 +18,7 @@ public class ReadOnlyMemMapTest extends OpenMapsAsserter {
   public void testDontRunOutOfFileDescriptors() throws Exception {
     for (int iter = 0; iter < 100; iter++) {
       ReadOnlyMemMap memMap = new ReadOnlyMemMap(new File("README.md"));
-      ArrayList<ReadOnlyMemMap> maps = Lists.newArrayList();
+      ArrayList<ReadOnlyMemMap> maps = new ArrayList<>();
       for (int i = 0; i < 100; i++) {
         maps.add(memMap.duplicate());
       }
@@ -51,27 +49,24 @@ public class ReadOnlyMemMapTest extends OpenMapsAsserter {
   public void testConcurrentReadWhileClosing() throws Exception {
     final AtomicBoolean running = new AtomicBoolean(true);
     final ReadOnlyMemMap memMap = new ReadOnlyMemMap(new File("README.md"));
-    final List<Exception> failures = Collections.synchronizedList(Lists.<Exception>newArrayList());
-    List<Thread> threads = Lists.newArrayList();
+    final List<Exception> failures = Collections.synchronizedList(new ArrayList<>());
+    List<Thread> threads = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
-      Thread thread = new Thread() {
-        @Override
-        public void run() {
-          ReadOnlyMemMap map = memMap.duplicate();
-          while (running.get()) {
-            try {
-              map.seek(1);
-              map.readUnsignedByte();
-              map.skipBytes(1);
-            } catch (IOException e) {
-              if (!e.getMessage().equals("Reader has been closed")) {
-                e.printStackTrace();
-                failures.add(e);
-              }
+      Thread thread = new Thread(() -> {
+        ReadOnlyMemMap map = memMap.duplicate();
+        while (running.get()) {
+          try {
+            map.seek(1);
+            map.readUnsignedByte();
+            map.skipBytes(1);
+          } catch (IOException e) {
+            if (!e.getMessage().equals("Reader has been closed")) {
+              e.printStackTrace();
+              failures.add(e);
             }
           }
         }
-      };
+      });
       threads.add(thread);
       thread.start();
     }

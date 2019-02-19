@@ -15,13 +15,11 @@
  */
 package com.spotify.sparkey;
 
-import com.google.common.base.Charsets;
-import com.google.common.base.Throwables;
-import com.google.common.primitives.UnsignedLongs;
 import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 
 final class IndexHash {
@@ -89,7 +87,7 @@ final class IndexHash {
       indexHash = new IndexHash(indexFile, logFile, header, logHeader, indexData, maxBlockSize, logData);
       indexHash.validate();
       return indexHash;
-    } catch (Exception e) {
+    } catch (Throwable e) {
       if (indexHash != null) {
         indexHash.close();
       } else {
@@ -100,8 +98,7 @@ final class IndexHash {
           logData.close();
         }
       }
-      Throwables.propagateIfPossible(e, IOException.class);
-      throw Throwables.propagate(e);
+      throw e;
     }
   }
 
@@ -651,7 +648,7 @@ final class IndexHash {
   }
 
   static long getWantedSlot(long hash, long capacity) {
-    return UnsignedLongs.remainder(hash, capacity);
+    return Long.remainderUnsigned(hash, capacity);
   }
 
   private static long getDisplacement(long capacity, long slot, long hash) {
@@ -693,7 +690,7 @@ final class IndexHash {
 
     @Override
     public String getKeyAsString() {
-      return new String(keyBuf, 0, keyLen, Charsets.UTF_8);
+      return new String(keyBuf, 0, keyLen, StandardCharsets.UTF_8);
     }
 
     @Override
@@ -703,7 +700,7 @@ final class IndexHash {
 
     @Override
     public String getValueAsString() throws IOException {
-      return new String(getValue(), Charsets.UTF_8);
+      return new String(getValue(), StandardCharsets.UTF_8);
     }
 
     @Override
@@ -813,4 +810,5 @@ final class IndexHash {
       return false;
     }
   }
+
 }

@@ -16,7 +16,6 @@
 package com.spotify.sparkey.system;
 
 import com.spotify.sparkey.OpenMapsAsserter;
-import com.spotify.sparkey.ReadOnlyMemMapTest;
 import com.spotify.sparkey.Sparkey;
 import com.spotify.sparkey.UtilTest;
 import org.junit.After;

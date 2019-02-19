@@ -25,9 +25,10 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 @State(Scope.Benchmark)
-@Warmup(iterations = 4)
-@Measurement(iterations = 10)
-public class WriteHashBenchmark {
+@Warmup(iterations = 2)
+@Measurement(iterations = 4)
+@Fork(value = 1, warmups = 0)
+public class AppendBenchmark {
 
   private File indexFile;
   private File logFile;
@@ -38,7 +39,7 @@ public class WriteHashBenchmark {
     indexFile = new File("test.spi");
     logFile = Sparkey.getLogFile(indexFile);
 
-    CompressionType compressionType = CompressionType.NONE;
+    CompressionType compressionType = CompressionType.valueOf(type);
 
     indexFile.deleteOnExit();
     logFile.deleteOnExit();
@@ -46,10 +47,6 @@ public class WriteHashBenchmark {
     logFile.delete();
 
     writer = Sparkey.createNew(indexFile, compressionType, 1024);
-
-    for (int i = 0; i < numElements; i++) {
-      writer.put("key_" + i, "value_" + i);
-    }
   }
 
   @TearDown(Level.Trial)
@@ -59,13 +56,24 @@ public class WriteHashBenchmark {
     logFile.delete();
   }
 
-  @Param({"1000", "10000", "100000", "1000000", "10000000", "100000000"})
-  public int numElements;
+  @Param({"NONE", "SNAPPY"})
+  public String type;
 
-  @GenerateMicroBenchmark
-  @BenchmarkMode(Mode.SingleShotTime)
+  @Benchmark
+  @BenchmarkMode(Mode.Throughput)
   @OutputTimeUnit(TimeUnit.SECONDS)
-  public void test() throws IOException {
-    writer.writeHash();
+  public void testSmall() throws IOException {
+    writer.put("key" , "value");
   }
+
+  private static final String MEDIUM_KEY = String.format("%200s", "key");
+  private static final String MEDIUM_VALUE = String.format("%200s", "value");
+
+  @Benchmark
+  @BenchmarkMode(Mode.Throughput)
+  @OutputTimeUnit(TimeUnit.SECONDS)
+  public void testMedium() throws IOException {
+    writer.put(MEDIUM_KEY , MEDIUM_VALUE);
+  }
+
 }

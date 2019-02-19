@@ -39,12 +39,7 @@ final class SortHelper {
 
   static final int ENTRY_SIZE = 40;
 
-  static final Comparator<Entry> ENTRY_COMPARATOR = new Comparator<Entry>() {
-    @Override
-    public int compare(final Entry o1, final Entry o2) {
-      return Long.signum(o1.wantedSlot - o2.wantedSlot) * 2 + Long.signum(o1.address - o2.address);
-    }
-  };
+  static final Comparator<Entry> ENTRY_COMPARATOR = Comparator.comparingLong(SortHelper.Entry::getWantedSlot).thenComparingLong(SortHelper.Entry::getAddress);
 
   private static final EntryDataWriterFactory ENTRY_DATA_WRITER_FACTORY = new EntryDataWriterFactory();
   private static final int BUFFER_SIZE = 64 * 1024;
@@ -58,7 +53,7 @@ final class SortHelper {
     }
     final EntryDataReaderFactory readerFactory = new EntryDataReaderFactory(hashCapacity);
     Sorter<SortHelper.Entry>
-        sorter = new Sorter<SortHelper.Entry>(config, readerFactory, ENTRY_DATA_WRITER_FACTORY, ENTRY_COMPARATOR);
+        sorter = new Sorter<>(config, readerFactory, ENTRY_DATA_WRITER_FACTORY, ENTRY_COMPARATOR);
 
     return sorter.sort(new LogFileEntryReader(logFile, start, end, hashData, hashCapacity, hashSeed));
   }
@@ -76,7 +71,7 @@ final class SortHelper {
     @Override
     public Entry readNext() throws IOException {
       try {
-        return new Entry(dataInputStream.readLong(), dataInputStream.readLong(), hashCapacity);
+        return Entry.fromHash(dataInputStream.readLong(), dataInputStream.readLong(), hashCapacity);
       } catch (EOFException e) {
         return null;
       }
@@ -172,7 +167,7 @@ final class SortHelper {
       if (position < 0) {
         throw new RuntimeException("Data size overflow");
       }
-      return new Entry(hash, address, hashCapacity);
+      return Entry.fromHash(hash, address, hashCapacity);
     }
 
     @Override
@@ -190,10 +185,14 @@ final class SortHelper {
     final long address;
     final long wantedSlot;
 
-    Entry(final long hash, final long address, final long hashCapacity) {
+    Entry(final long hash, final long address, final long wantedSlot) {
       this.hash = hash;
       this.address = address;
-      this.wantedSlot = IndexHash.getWantedSlot(hash, hashCapacity);
+      this.wantedSlot = wantedSlot;
+    }
+
+    static Entry fromHash(final long hash, final long address, final long hashCapacity) {
+      return new Entry(hash, address, IndexHash.getWantedSlot(hash, hashCapacity));
     }
 
     @Override
@@ -202,6 +201,18 @@ final class SortHelper {
              "hash=" + hash +
              ", address=" + address +
              '}';
+    }
+
+    public long getHash() {
+      return hash;
+    }
+
+    public long getAddress() {
+      return address;
+    }
+
+    public long getWantedSlot() {
+      return wantedSlot;
     }
   }
 }
