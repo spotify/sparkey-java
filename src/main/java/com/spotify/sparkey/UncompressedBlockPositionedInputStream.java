@@ -20,12 +20,11 @@ import java.io.InputStream;
 
 final class UncompressedBlockPositionedInputStream extends BlockPositionedInputStream {
 
-  private final InputStream inputStream;
   private long position;
 
-  public UncompressedBlockPositionedInputStream(InputStream inputStream, long start) {
+  public UncompressedBlockPositionedInputStream(InputStream data, long start) {
+    super(data);
     position = start;
-    this.inputStream = inputStream;
   }
 
   @Override
@@ -36,7 +35,7 @@ final class UncompressedBlockPositionedInputStream extends BlockPositionedInputS
   @Override
   public int read() throws IOException {
     position++;
-    return inputStream.read();
+    return input.read();
   }
 
   @Override
@@ -47,12 +46,12 @@ final class UncompressedBlockPositionedInputStream extends BlockPositionedInputS
   @Override
   public int read(byte[] b, int off, int len) throws IOException {
     position += len;
-    return inputStream.read(b, off, len);
+    return input.read(b, off, len);
   }
 
   @Override
   public long skip(long n) throws IOException {
-    long skipped = inputStream.skip(n);
+    long skipped = input.skip(n);
     position += skipped;
     return skipped;
   }

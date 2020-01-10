@@ -21,8 +21,6 @@ import java.io.IOException;
 import java.io.InputStream;
 
 final class SnappyReader extends BlockPositionedInputStream {
-  private final InputStream data;
-
   private final byte[] uncompressedBuf;
   private final byte[] compressedBuf;
   private int bufPos;
@@ -32,7 +30,7 @@ final class SnappyReader extends BlockPositionedInputStream {
   private long nextBlockStart;
 
   public SnappyReader(InputStream data, int maxBlockSize, long start) {
-    this.data = data;
+    super(data);
     blockSize = 0;
     bufPos = 0;
     curBlockStart = start;
@@ -50,8 +48,8 @@ final class SnappyReader extends BlockPositionedInputStream {
   }
 
   private void fetchBlock() throws IOException {
-    int compressedSize = Util.readUnsignedVLQInt(data);
-    data.read(compressedBuf, 0, compressedSize);
+    int compressedSize = Util.readUnsignedVLQInt(input);
+    input.read(compressedBuf, 0, compressedSize);
     int uncompressedSize = Snappy.uncompress(compressedBuf, 0, compressedSize, uncompressedBuf, 0);
     bufPos = 0;
     blockSize = uncompressedSize;
