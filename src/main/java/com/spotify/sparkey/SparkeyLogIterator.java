@@ -67,7 +67,6 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
     try {
       final BlockPositionedInputStream stream;
       {
-
         final InputStream stream2 = new BufferedInputStream(new FileInputStream(logFile), 128 * 1024);
         Sparkey.incrOpenFiles();
         stream2.skip(start);

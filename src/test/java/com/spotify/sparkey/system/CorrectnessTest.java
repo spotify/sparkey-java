@@ -23,10 +23,12 @@ import com.spotify.sparkey.SparkeyReader;
 import com.spotify.sparkey.SparkeyWriter;
 
 import com.spotify.sparkey.TestSparkeyWriter;
+import org.junit.Assume;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Iterator;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -180,6 +182,37 @@ public class CorrectnessTest extends BaseSystemTest {
         testHelperWithDeletes(size, CompressionType.SNAPPY, 4096, hashType);
       }
     }
+  }
+
+  @Test
+  public void testFinishIteratorClosesFiles() throws IOException {
+    long before = countOpenFileDescriptors();
+
+    // Will only run test on *nix systems
+    Assume.assumeTrue(before >= 0);
+
+    SparkeyWriter writer = Sparkey.createNew(indexFile, CompressionType.NONE, 0);
+    writer.setFsync(true);
+    writer.setHashSeed(-112683590);
+    writer.setHashType(HashType.HASH_32_BITS);
+
+    for (int i = 0; i < 10; i++) {
+      writer.put("Key" + i, "Value" + i);
+    }
+    writer.flush();
+    writer.close();
+
+    assertEquals(before, countOpenFileDescriptors());
+
+    {
+      SparkeyLogIterator logIterator = new SparkeyLogIterator(logFile);
+      Iterator<SparkeyReader.Entry> iterator = logIterator.iterator();
+      while (iterator.hasNext()) {
+        iterator.next();
+      }
+    }
+
+    assertEquals(before, countOpenFileDescriptors());
   }
 
   @Test

@@ -18,11 +18,14 @@ package com.spotify.sparkey.system;
 import com.spotify.sparkey.OpenMapsAsserter;
 import com.spotify.sparkey.Sparkey;
 import com.spotify.sparkey.UtilTest;
+import com.sun.management.UnixOperatingSystemMXBean;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 
 public class BaseSystemTest extends OpenMapsAsserter {
   protected File indexFile;
@@ -47,5 +50,14 @@ public class BaseSystemTest extends OpenMapsAsserter {
 
   @Test
   public void testDummy() throws Exception {
+  }
+
+  static long countOpenFileDescriptors() {
+    OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
+    if(os instanceof UnixOperatingSystemMXBean){
+      long openFileDescriptorCount = ((UnixOperatingSystemMXBean) os).getOpenFileDescriptorCount();
+      return openFileDescriptorCount;
+    }
+    return -1;
   }
 }

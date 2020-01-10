@@ -10,8 +10,13 @@
   <parent>
     <groupId>org.sonatype.oss</groupId>
     <artifactId>oss-parent</artifactId>
-    <version>7</version>
+    <version>9</version>
   </parent>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <skip-enforce-jdk8>true</skip-enforce-jdk8>
+  </properties>
 
   <scm>
     <connection>scm:git:https://github.com/spotify/sparkey-java.git</connection>
@@ -58,6 +63,15 @@
     </repository>
   </distributionManagement>
 
+  <profiles>
+    <profile>
+      <id>sonatype-oss-release</id>
+      <properties>
+        <skip-enforce-jdk8>false</skip-enforce-jdk8>
+      </properties>
+    </profile>
+  </profiles>
+
   <build>
     <plugins>
       <plugin>
@@ -91,6 +105,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.1</version>
         <configuration>
+          <release>8</release>
           <source>8</source>
           <target>8</target>
         </configuration>
@@ -126,10 +141,11 @@
           </execution>
         </executions>
       </plugin-->
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
-        <version>3.0.0-M1</version> <!-- find the latest version at http://maven.apache.org/plugins/maven-enforcer-plugin/ -->
+        <version>3.0.0-M2</version> <!-- find the latest version at http://maven.apache.org/plugins/maven-enforcer-plugin/ -->
         <executions>
           <execution>
             <id>enforce-bytecode-version</id>
@@ -143,6 +159,23 @@
                 </enforceBytecodeVersion>
               </rules>
               <fail>true</fail>
+            </configuration>
+          </execution>
+          <execution>
+            <id>enforce-java</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <phase>clean</phase>
+            <configuration>
+              <fail>true</fail>
+              <failFast>true</failFast>
+              <rules>
+                <requireJavaVersion>
+                  <version>[1.8.0,1.9.0)</version>
+                </requireJavaVersion>
+              </rules>
+              <skip>${skip-enforce-jdk8}</skip>
             </configuration>
           </execution>
         </executions>

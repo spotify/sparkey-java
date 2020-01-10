@@ -15,8 +15,21 @@
  */
 package com.spotify.sparkey;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 abstract class BlockPositionedInputStream extends InputStream {
+
+  protected final InputStream input;
+
+  public BlockPositionedInputStream(InputStream input) {
+    this.input = input;
+  }
+
   abstract long getBlockPosition();
+
+  @Override
+  public void close() throws IOException {
+    input.close();
+  }
 }
