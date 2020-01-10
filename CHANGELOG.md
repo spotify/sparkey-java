@@ -1,3 +1,6 @@
+#### 3.0.1
+* Fix bug where file-descriptors are not closed after using a Sparkey iterator.
+
 #### 3.0.0
 * Compiles as Java 8, up from Java 6.
 * Removed Guava as a dependency.
