@@ -5,9 +5,9 @@ import org.junit.Test;
 import java.io.*;
 
 /**
- * Tests SnappyOutputStream
+ * Tests CompressedOutputStream
  */
-public class SnappyOutputStreamTest {
+public class CompressedOutputStreamTest {
     @Test
     public void testLargeWrite() throws IOException {
         File testFile = File.createTempFile("sparkey-test", "");
@@ -15,7 +15,7 @@ public class SnappyOutputStreamTest {
         FileOutputStream fos = new FileOutputStream(testFile);
 
         byte[] buf = new byte[1000 * 1000];
-        SnappyOutputStream os = new SnappyOutputStream(10, fos, fos.getFD());
+        CompressedOutputStream os = new CompressedOutputStream(CompressorType.SNAPPY, 10, fos, fos.getFD());
         os.write(buf);
 
         testFile.delete();

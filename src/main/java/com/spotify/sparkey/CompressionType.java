@@ -52,7 +52,7 @@ public enum CompressionType {
 
     @Override
     BlockOutput createBlockOutput(FileDescriptor fd, OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException {
-      return new SnappyWriter(new SnappyOutputStream(maxBlockSize, outputStream, fd), maxEntriesPerBlock);
+      return new SnappyWriter(new CompressedOutputStream(CompressorType.SNAPPY, maxBlockSize, outputStream, fd), maxEntriesPerBlock);
     }
   },;
 

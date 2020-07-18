@@ -21,7 +21,7 @@ import com.github.luben.zstd.Zstd;
 
 import org.xerial.snappy.Snappy;
 
-public enum CompressorType {
+enum CompressorType {
   SNAPPY {
     @Override
     int maxCompressedLength(int blockSize) {

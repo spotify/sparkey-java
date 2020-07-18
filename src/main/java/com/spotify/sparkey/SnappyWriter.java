@@ -7,7 +7,7 @@ public class SnappyWriter implements BlockOutput {
   public static final SnappyWriter DUMMY = new SnappyWriter();
 
   private final byte[] buf = new byte[1024*1024];
-  private final SnappyOutputStream snappyOutputStream;
+  private final CompressedOutputStream compressedOutputStream;
 
   private int currentNumEntries;
   private int maxEntriesPerBlock;
@@ -16,15 +16,15 @@ public class SnappyWriter implements BlockOutput {
 
   // Only used to initialize dummy
   private SnappyWriter() {
-    snappyOutputStream = null;
+    compressedOutputStream = null;
     maxBlockSize = 0;
   }
 
-  public SnappyWriter(SnappyOutputStream snappyOutputStream, int maxEntriesPerBlock) {
-    this.snappyOutputStream = snappyOutputStream;
+  public SnappyWriter(CompressedOutputStream compressedOutputStream, int maxEntriesPerBlock) {
+    this.compressedOutputStream = compressedOutputStream;
     this.maxEntriesPerBlock = maxEntriesPerBlock;
-    snappyOutputStream.setListener(this);
-    maxBlockSize = this.snappyOutputStream.getMaxBlockSize();
+    compressedOutputStream.setListener(this);
+    maxBlockSize = this.compressedOutputStream.getMaxBlockSize();
   }
 
   public void afterFlush() {
@@ -35,9 +35,9 @@ public class SnappyWriter implements BlockOutput {
 
   @Override
   public void flush(boolean fsync) throws IOException {
-    snappyOutputStream.flush();
+    compressedOutputStream.flush();
     if (fsync) {
-      snappyOutputStream.fsync();
+      compressedOutputStream.fsync();
     }
   }
 
@@ -50,15 +50,15 @@ public class SnappyWriter implements BlockOutput {
     flushed = false;
     currentNumEntries++;
 
-    Util.writeUnsignedVLQ(keyLen + 1, snappyOutputStream);
-    Util.writeUnsignedVLQ(valueLen, snappyOutputStream);
-    snappyOutputStream.write(key, 0, keyLen);
-    snappyOutputStream.write(value, 0, valueLen);
+    Util.writeUnsignedVLQ(keyLen + 1, compressedOutputStream);
+    Util.writeUnsignedVLQ(valueLen, compressedOutputStream);
+    compressedOutputStream.write(key, 0, keyLen);
+    compressedOutputStream.write(value, 0, valueLen);
 
 
     // Make sure that the beginning of each block is the start of a key/value pair
-    if (flushed && snappyOutputStream.getPending() > 0) {
-      snappyOutputStream.flush();
+    if (flushed && compressedOutputStream.getPending() > 0) {
+      compressedOutputStream.flush();
     }
   }
 
@@ -71,19 +71,19 @@ public class SnappyWriter implements BlockOutput {
     flushed = false;
     currentNumEntries++;
 
-    Util.writeUnsignedVLQ(keyLen + 1, snappyOutputStream);
-    Util.writeUnsignedVLQ(valueLen, snappyOutputStream);
-    snappyOutputStream.write(key, 0, keyLen);
-    Util.copy(valueLen, value, snappyOutputStream, buf);
+    Util.writeUnsignedVLQ(keyLen + 1, compressedOutputStream);
+    Util.writeUnsignedVLQ(valueLen, compressedOutputStream);
+    compressedOutputStream.write(key, 0, keyLen);
+    Util.copy(valueLen, value, compressedOutputStream, buf);
 
     // Make sure that the beginning of each block is the start of a key/value pair
-    if (flushed && snappyOutputStream.getPending() > 0) {
-      snappyOutputStream.flush();
+    if (flushed && compressedOutputStream.getPending() > 0) {
+      compressedOutputStream.flush();
     }
   }
 
   private void smartFlush(int keySize, long totalSize) throws IOException {
-    int remaining = snappyOutputStream.remaining();
+    int remaining = compressedOutputStream.remaining();
     if (remaining < keySize) {
       flush(false);
     } else if (remaining < totalSize && totalSize < maxBlockSize - remaining) {
@@ -99,20 +99,20 @@ public class SnappyWriter implements BlockOutput {
     flushed = false;
     currentNumEntries++;
 
-    snappyOutputStream.write(0);
-    Util.writeUnsignedVLQ(keyLen, snappyOutputStream);
-    snappyOutputStream.write(key, 0, keyLen);
+    compressedOutputStream.write(0);
+    Util.writeUnsignedVLQ(keyLen, compressedOutputStream);
+    compressedOutputStream.write(key, 0, keyLen);
 
     // Make sure that the beginning of each block is the start of a key/value pair
-    if (flushed && snappyOutputStream.getPending() > 0) {
-      snappyOutputStream.flush();
+    if (flushed && compressedOutputStream.getPending() > 0) {
+      compressedOutputStream.flush();
     }
   }
 
   @Override
   public void close(boolean fsync) throws IOException {
     flush(fsync);
-    snappyOutputStream.close();
+    compressedOutputStream.close();
   }
 
   public int getMaxEntriesPerBlock() {
