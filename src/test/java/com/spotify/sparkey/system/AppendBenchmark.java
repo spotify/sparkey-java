@@ -56,7 +56,7 @@ public class AppendBenchmark {
     logFile.delete();
   }
 
-  @Param({"NONE", "SNAPPY"})
+  @Param({"NONE", "SNAPPY", "ZSTD"})
   public String type;
 
   @Benchmark

@@ -17,7 +17,8 @@ package com.spotify.sparkey;
 
 public enum CompressionType {
   NONE(new CompressionTypeBackendUncompressed()),
-  SNAPPY(new CompressionTypeBackendCompressed(CompressorType.SNAPPY)),;
+  SNAPPY(new CompressionTypeBackendCompressed(CompressorType.SNAPPY)),
+  ZSTD(new CompressionTypeBackendCompressed(CompressorType.ZSTD)),;
 
   private final CompressionTypeBackend backend;
 

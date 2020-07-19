@@ -62,7 +62,7 @@ class CompressionTypeBackendCompressed implements CompressionTypeBackend {
 
     @Override
     public BlockOutput createBlockOutput(FileDescriptor fd, OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException {
-        return new CompressedWriter(new CompressedOutputStream(CompressorType.SNAPPY, maxBlockSize, outputStream, fd), maxEntriesPerBlock);
+        return new CompressedWriter(new CompressedOutputStream(compressor, maxBlockSize, outputStream, fd), maxEntriesPerBlock);
     }
 }
 
