@@ -29,7 +29,7 @@ final class CompressedOutputStream extends OutputStream {
   private final byte[] compressedBuffer;
   private final FileDescriptor fileDescriptor;
   private int pending;
-  private SnappyWriter listener = SnappyWriter.DUMMY;
+  private CompressedWriter listener = CompressedWriter.DUMMY;
 
   CompressedOutputStream(CompressorType compressor, int maxBlockSize, OutputStream output, FileDescriptor fileDescriptor) throws IOException {
     this.compressor = compressor;
@@ -111,8 +111,8 @@ final class CompressedOutputStream extends OutputStream {
     return maxBlockSize - pending;
   }
 
-  void setListener(SnappyWriter snappyWriter) {
-    listener = snappyWriter;
+  void setListener(CompressedWriter compressedWriter) {
+    listener = compressedWriter;
   }
 
   int getMaxBlockSize() {
