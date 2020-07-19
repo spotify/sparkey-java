@@ -50,7 +50,7 @@ final class LogWriter {
     Sparkey.incrOpenFiles();
     FileDescriptor fd = fileOutputStream.getFD();
     OutputStream stream = new BufferedOutputStream(fileOutputStream, 1024 * 1024);
-    return header.getCompressionType().createBlockOutput(fd, stream, header.getCompressionBlockSize(),
+    return header.getCompressionTypeBackend().createBlockOutput(fd, stream, header.getCompressionBlockSize(),
             header.getMaxEntriesPerBlock());
   }
 

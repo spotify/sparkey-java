@@ -142,6 +142,10 @@ public final class LogHeader extends CommonHeader {
     return compressionType;
   }
 
+  CompressionTypeBackend getCompressionTypeBackend() {
+    return getCompressionType().getBackend();
+  }
+
   public long getDataEnd() {
     return dataEnd;
   }

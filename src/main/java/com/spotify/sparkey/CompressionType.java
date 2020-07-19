@@ -15,50 +15,17 @@
  */
 package com.spotify.sparkey;
 
-import java.io.FileDescriptor;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 public enum CompressionType {
-  NONE {
-    @Override
-    BlockPositionedInputStream createBlockInput(InputStream inputStream, int maxBlockSize, long start) {
-      return new UncompressedBlockPositionedInputStream(inputStream, start);
-    }
+  NONE(new CompressionTypeBackendUncompressed()),
+  SNAPPY(new CompressionTypeBackendCompressed(CompressorType.SNAPPY)),;
 
-    @Override
-    BlockRandomInput createRandomAccessData(ReadOnlyMemMap data, int maxBlockSize) {
-      return new UncompressedBlockRandomInput(data);
-    }
+  private final CompressionTypeBackend backend;
 
-    @Override
-    BlockOutput createBlockOutput(FileDescriptor fd, OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException {
-      return new UncompressedBlockOutput(outputStream, fd);
-    }
+  CompressionType(CompressionTypeBackend backend) {
+    this.backend = backend;
+  }
 
-  },
-
-  SNAPPY {
-    @Override
-    BlockPositionedInputStream createBlockInput(InputStream inputStream, int maxBlockSize, long start) {
-      return new CompressedReader(CompressorType.SNAPPY, inputStream, maxBlockSize, start);
-    }
-
-    @Override
-    BlockRandomInput createRandomAccessData(ReadOnlyMemMap data, int maxBlockSize) {
-      return new CompressedRandomReader(CompressorType.SNAPPY, new UncompressedBlockRandomInput(data), maxBlockSize);
-    }
-
-    @Override
-    BlockOutput createBlockOutput(FileDescriptor fd, OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException {
-      return new CompressedWriter(new CompressedOutputStream(CompressorType.SNAPPY, maxBlockSize, outputStream, fd), maxEntriesPerBlock);
-    }
-  },;
-
-  abstract BlockOutput createBlockOutput(FileDescriptor fd, OutputStream outputStream, int maxBlockSize, int maxEntriesPerBlock) throws IOException;
-
-  abstract BlockPositionedInputStream createBlockInput(InputStream inputStream, int maxBlockSize, long start);
-
-  abstract BlockRandomInput createRandomAccessData(ReadOnlyMemMap data, int maxBlockSize);
+  CompressionTypeBackend getBackend() {
+    return backend;
+  }
 }
