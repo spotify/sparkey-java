@@ -10,7 +10,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * Tests SnappyReader
  */
-public class SnappyReaderTest {
+public class CompressedReaderTest {
     // A stream that reads the same array repeatedly, forever.
     private class RepeatingInputStream extends InputStream {
         private byte[] buffer;
@@ -45,7 +45,7 @@ public class SnappyReaderTest {
         }
     }
 
-    private SnappyReader reader() throws IOException {
+    private CompressedReader reader() throws IOException {
         byte[] uncompressed = new byte[10];
         for (int i = 0; i < uncompressed.length; ++i) {
             uncompressed[i] = (byte)i;
@@ -57,7 +57,7 @@ public class SnappyReaderTest {
         bytes.write(compressed);
 
         InputStream buf = new RepeatingInputStream(bytes.toByteArray());
-        return new SnappyReader(buf, uncompressed.length, 0);
+        return new CompressedReader(CompressorType.SNAPPY, buf, uncompressed.length, 0);
     }
 
     @Test

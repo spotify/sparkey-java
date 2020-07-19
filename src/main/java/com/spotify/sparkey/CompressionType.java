@@ -42,12 +42,12 @@ public enum CompressionType {
   SNAPPY {
     @Override
     BlockPositionedInputStream createBlockInput(InputStream inputStream, int maxBlockSize, long start) {
-      return new SnappyReader(inputStream, maxBlockSize, start);
+      return new CompressedReader(CompressorType.SNAPPY, inputStream, maxBlockSize, start);
     }
 
     @Override
     BlockRandomInput createRandomAccessData(ReadOnlyMemMap data, int maxBlockSize) {
-      return new SnappyRandomReader(new UncompressedBlockRandomInput(data), maxBlockSize);
+      return new CompressedRandomReader(CompressorType.SNAPPY, new UncompressedBlockRandomInput(data), maxBlockSize);
     }
 
     @Override

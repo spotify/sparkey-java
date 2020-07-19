@@ -15,12 +15,11 @@
  */
 package com.spotify.sparkey;
 
-import org.xerial.snappy.Snappy;
-
 import java.io.IOException;
 import java.io.InputStream;
 
-final class SnappyReader extends BlockPositionedInputStream {
+final class CompressedReader extends BlockPositionedInputStream {
+  private final CompressorType compressor;
   private final byte[] uncompressedBuf;
   private final byte[] compressedBuf;
   private int bufPos;
@@ -29,14 +28,15 @@ final class SnappyReader extends BlockPositionedInputStream {
   private long curBlockStart;
   private long nextBlockStart;
 
-  public SnappyReader(InputStream data, int maxBlockSize, long start) {
+  public CompressedReader(CompressorType compressor, InputStream data, int maxBlockSize, long start) {
     super(data);
+    this.compressor = compressor;
     blockSize = 0;
     bufPos = 0;
     curBlockStart = start;
     nextBlockStart = start;
     uncompressedBuf = new byte[maxBlockSize];
-    compressedBuf = new byte[Snappy.maxCompressedLength(maxBlockSize)];
+    compressedBuf = new byte[compressor.maxCompressedLength(maxBlockSize)];
   }
 
   @Override
@@ -50,7 +50,7 @@ final class SnappyReader extends BlockPositionedInputStream {
   private void fetchBlock() throws IOException {
     int compressedSize = Util.readUnsignedVLQInt(input);
     input.read(compressedBuf, 0, compressedSize);
-    int uncompressedSize = Snappy.uncompress(compressedBuf, 0, compressedSize, uncompressedBuf, 0);
+    int uncompressedSize = compressor.uncompress(compressedBuf, compressedSize, uncompressedBuf);
     bufPos = 0;
     blockSize = uncompressedSize;
 
