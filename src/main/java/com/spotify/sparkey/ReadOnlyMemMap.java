@@ -18,6 +18,7 @@ package com.spotify.sparkey;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.Buffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -78,7 +79,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
 
       curChunkIndex = 0;
       curChunk = chunks[0];
-      curChunk.position(0);
+      ((Buffer)curChunk).position(0);
       Sparkey.incrOpenMaps();
     } catch (Throwable e) {
       Sparkey.decrOpenFiles();
@@ -102,7 +103,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
     this.chunks = chunks;
     curChunkIndex = 0;
     curChunk = chunks[0];
-    curChunk.position(0);
+    ((Buffer)curChunk).position(0);
   }
 
   public void close() {
@@ -152,7 +153,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
     curChunkIndex = partIndex;
     MappedByteBuffer[] chunks = getChunks();
     MappedByteBuffer curChunk = chunks[partIndex];
-    curChunk.position((int) (pos & mapBitmask));
+    ((Buffer)curChunk).position((int) (pos & mapBitmask));
     this.curChunk = curChunk;
   }
 
@@ -166,7 +167,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
     if (curChunk == null) {
       throw new RuntimeException("chunk == null");
     }
-    curChunk.position(0);
+    ((Buffer)curChunk).position(0);
     this.curChunk = curChunk;
   }
 
@@ -221,7 +222,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
     MappedByteBuffer curChunk = getCurChunk();
     int remaining = curChunk.remaining();
     if (remaining >= amount) {
-      curChunk.position((int) (curChunk.position() + amount));
+      ((Buffer)curChunk).position((int) (curChunk.position() + amount));
     } else {
       next();
       skipBytes(amount - remaining);
