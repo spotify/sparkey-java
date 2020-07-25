@@ -15,11 +15,10 @@
  */
 package com.spotify.sparkey;
 
-import org.xerial.snappy.Snappy;
-
 import java.io.IOException;
 
-final class SnappyRandomReader implements BlockRandomInput {
+final class CompressedRandomReader implements BlockRandomInput {
+  private final CompressorType compressor;
 
   private long position;
 
@@ -31,13 +30,14 @@ final class SnappyRandomReader implements BlockRandomInput {
   private int bufPos;
   private int blockSize;
 
-  SnappyRandomReader(BlockRandomInput data, int maxBlockSize) {
+  CompressedRandomReader(CompressorType compressor, BlockRandomInput data, int maxBlockSize) {
+    this.compressor = compressor;
     this.data = data;
     this.maxBlockSize = maxBlockSize;
     blockSize = 0;
     bufPos = 0;
     uncompressedBuf = new byte[maxBlockSize];
-    compressedBuf = new byte[Snappy.maxCompressedLength(maxBlockSize)];
+    compressedBuf = new byte[compressor.maxCompressedLength(maxBlockSize)];
   }
 
   @Override
@@ -56,7 +56,7 @@ final class SnappyRandomReader implements BlockRandomInput {
     int compressedSize = Util.readUnsignedVLQInt(data);
     data.readFully(compressedBuf, 0, compressedSize);
     bufPos = 0;
-    blockSize = Snappy.uncompress(compressedBuf, 0, compressedSize, uncompressedBuf, 0);
+    blockSize = compressor.uncompress(compressedBuf, compressedSize, uncompressedBuf);
     position = -1;
   }
 
@@ -106,7 +106,7 @@ final class SnappyRandomReader implements BlockRandomInput {
 
   @Override
   public BlockRandomInput duplicate() {
-    SnappyRandomReader duplicate = new SnappyRandomReader(data.duplicate(), maxBlockSize);
+    CompressedRandomReader duplicate = new CompressedRandomReader(compressor, data.duplicate(), maxBlockSize);
     duplicate.bufPos = this.bufPos;
     duplicate.blockSize = this.blockSize;
     duplicate.position = this.position;

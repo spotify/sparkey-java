@@ -47,7 +47,7 @@ public class FsyncBenchmark {
   private File logFile;
   private SparkeyWriter writer;
 
-  @Param({"NONE", "SNAPPY"})
+  @Param({"NONE", "SNAPPY", "ZSTD"})
   public String type;
 
   @Param({"true", "false"})

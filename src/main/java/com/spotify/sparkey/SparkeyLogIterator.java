@@ -71,7 +71,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
         Sparkey.incrOpenFiles();
         stream2.skip(start);
 
-        stream = header.getCompressionType().createBlockInput(stream2, header.getCompressionBlockSize(), start);
+        stream = header.getCompressionTypeBackend().createBlockInput(stream2, header.getCompressionBlockSize(), start);
       }
 
       return new Iterator<SparkeyReader.Entry>() {

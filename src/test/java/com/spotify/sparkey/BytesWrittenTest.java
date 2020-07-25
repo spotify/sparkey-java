@@ -35,6 +35,11 @@ public class BytesWrittenTest extends OpenMapsAsserter {
     test(CompressionType.SNAPPY);
   }
 
+  @Test
+  public void testZstd() throws Exception {
+    test(CompressionType.ZSTD);
+  }
+
   private void test(CompressionType compressionType) throws IOException {
     SparkeyWriter writer = Sparkey.createNew(file, compressionType, 20);
     for (int i = 0; i < 13; i++) {

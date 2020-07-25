@@ -1,16 +1,15 @@
 package com.spotify.sparkey;
 
 import org.junit.Test;
-import org.xerial.snappy.Snappy;
 
 import java.io.*;
 
 import static org.junit.Assert.assertEquals;
 
 /**
- * Tests SnappyReader
+ * Tests CompressedReader
  */
-public class SnappyReaderTest {
+public class CompressedReaderTest {
     // A stream that reads the same array repeatedly, forever.
     private class RepeatingInputStream extends InputStream {
         private byte[] buffer;
@@ -45,31 +44,36 @@ public class SnappyReaderTest {
         }
     }
 
-    private SnappyReader reader() throws IOException {
+    private CompressedReader reader(CompressorType compressor) throws IOException {
         byte[] uncompressed = new byte[10];
         for (int i = 0; i < uncompressed.length; ++i) {
             uncompressed[i] = (byte)i;
         }
 
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        byte[] compressed = Snappy.compress(uncompressed);
-        Util.writeUnsignedVLQ(compressed.length, bytes);
-        bytes.write(compressed);
+        byte[] compressed = new byte[compressor.maxCompressedLength(uncompressed.length)];
+        int length = compressor.compress(uncompressed, uncompressed.length, compressed);
+        Util.writeUnsignedVLQ(length, bytes);
+        bytes.write(compressed, 0, length);
 
         InputStream buf = new RepeatingInputStream(bytes.toByteArray());
-        return new SnappyReader(buf, uncompressed.length, 0);
+        return new CompressedReader(compressor, buf, uncompressed.length, 0);
     }
 
     @Test
     public void testLargeSkip() throws IOException {
-        long ret = reader().skip(1000 * 1000);
-        assertEquals(1000 * 1000, ret);
+        for (CompressorType compressor : CompressorType.values()) {
+            long ret = reader(compressor).skip(1000 * 1000);
+            assertEquals(1000 * 1000, ret);
+        }
     }
 
     @Test
     public void testLargeRead() throws IOException {
-        byte[] buf = new byte[1000 * 1000];
-        int ret = reader().read(buf);
-        assertEquals(1000 * 1000, ret);
+        for (CompressorType compressor : CompressorType.values()) {
+            byte[] buf = new byte[1000 * 1000];
+            int ret = reader(compressor).read(buf);
+            assertEquals(1000 * 1000, ret);
+        }
     }
 }

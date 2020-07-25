@@ -81,7 +81,7 @@ final class IndexHash {
       int maxBlockSize = 0;
       indexData = new ReadOnlyMemMap(indexFile);
       maxBlockSize = logHeader.getCompressionBlockSize();
-      logData = logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile),
+      logData = logHeader.getCompressionTypeBackend().createRandomAccessData(new ReadOnlyMemMap(logFile),
               maxBlockSize);
 
       indexHash = new IndexHash(indexFile, logFile, header, logHeader, indexData, maxBlockSize, logData);
@@ -245,7 +245,7 @@ final class IndexHash {
 
   private static void fillFromLog(ReadWriteData indexData, File logFile, IndexHeader header, long start, long end, LogHeader logHeader) throws IOException {
     SparkeyLogIterator iterator = new SparkeyLogIterator(logFile, start, end);
-    BlockRandomInput logData = logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
+    BlockRandomInput logData = logHeader.getCompressionTypeBackend().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
 
     HashType hashData = header.getHashType();
     AddressSize addressData = header.getAddressData();
@@ -302,7 +302,7 @@ final class IndexHash {
     final long hashCapacity = header.getHashCapacity();
 
     final BlockRandomInput logData =
-        logHeader.getCompressionType().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
+        logHeader.getCompressionTypeBackend().createRandomAccessData(new ReadOnlyMemMap(logFile), logHeader.getCompressionBlockSize());
 
     try {
       final Iterator<SortHelper.Entry> iterator2 = SortHelper.sort(

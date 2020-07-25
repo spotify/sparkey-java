@@ -15,14 +15,13 @@
  */
 package com.spotify.sparkey;
 
-import org.xerial.snappy.Snappy;
-
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.SyncFailedException;
 
-final class SnappyOutputStream extends OutputStream {
+final class CompressedOutputStream extends OutputStream {
+  private final CompressorType compressor;
   private final int maxBlockSize;
   private final OutputStream output;
 
@@ -30,9 +29,10 @@ final class SnappyOutputStream extends OutputStream {
   private final byte[] compressedBuffer;
   private final FileDescriptor fileDescriptor;
   private int pending;
-  private SnappyWriter listener = SnappyWriter.DUMMY;
+  private CompressedWriter listener = CompressedWriter.DUMMY;
 
-  SnappyOutputStream(int maxBlockSize, OutputStream output, FileDescriptor fileDescriptor) throws IOException {
+  CompressedOutputStream(CompressorType compressor, int maxBlockSize, OutputStream output, FileDescriptor fileDescriptor) throws IOException {
+    this.compressor = compressor;
     this.fileDescriptor = fileDescriptor;
     if (maxBlockSize < 10) {
       throw new IOException("Too small block size - won't be able to fit keylen + valuelen in a single block");
@@ -40,7 +40,7 @@ final class SnappyOutputStream extends OutputStream {
     this.maxBlockSize = maxBlockSize;
     this.output = output;
     uncompressedBuffer = new byte[maxBlockSize];
-    compressedBuffer = new byte[Snappy.maxCompressedLength(maxBlockSize)];
+    compressedBuffer = new byte[compressor.maxCompressedLength(maxBlockSize)];
   }
 
   @Override
@@ -49,7 +49,7 @@ final class SnappyOutputStream extends OutputStream {
       return;
     }
 
-    int compressedSize = Snappy.compress(uncompressedBuffer, 0, pending, compressedBuffer, 0);
+    int compressedSize = compressor.compress(uncompressedBuffer, pending, compressedBuffer);
     Util.writeUnsignedVLQ(compressedSize, output);
     output.write(compressedBuffer, 0, compressedSize);
     output.flush();
@@ -111,8 +111,8 @@ final class SnappyOutputStream extends OutputStream {
     return maxBlockSize - pending;
   }
 
-  void setListener(SnappyWriter snappyWriter) {
-    listener = snappyWriter;
+  void setListener(CompressedWriter compressedWriter) {
+    listener = compressedWriter;
   }
 
   int getMaxBlockSize() {

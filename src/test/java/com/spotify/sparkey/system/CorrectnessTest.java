@@ -55,6 +55,9 @@ public class CorrectnessTest extends BaseSystemTest {
         testHelper(size, CompressionType.SNAPPY, 64, hashType);
         testHelper(size, CompressionType.SNAPPY, 1024, hashType);
         testHelper(size, CompressionType.SNAPPY, 4096, hashType);
+        testHelper(size, CompressionType.ZSTD, 64, hashType);
+        testHelper(size, CompressionType.ZSTD, 1024, hashType);
+        testHelper(size, CompressionType.ZSTD, 4096, hashType);
       }
     }
   }
@@ -180,6 +183,9 @@ public class CorrectnessTest extends BaseSystemTest {
         testHelperWithDeletes(size, CompressionType.SNAPPY, 64, hashType);
         testHelperWithDeletes(size, CompressionType.SNAPPY, 1024, hashType);
         testHelperWithDeletes(size, CompressionType.SNAPPY, 4096, hashType);
+        testHelperWithDeletes(size, CompressionType.ZSTD, 64, hashType);
+        testHelperWithDeletes(size, CompressionType.ZSTD, 1024, hashType);
+        testHelperWithDeletes(size, CompressionType.ZSTD, 4096, hashType);
       }
     }
   }
