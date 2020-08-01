@@ -1,3 +1,6 @@
+#### 3.1.0
+* Added support for zstd compression
+
 #### 3.0.1
 * Fix bug where file-descriptors are not closed after using a Sparkey iterator.
 
