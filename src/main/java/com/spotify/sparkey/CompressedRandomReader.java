@@ -119,4 +119,8 @@ final class CompressedRandomReader implements BlockRandomInput {
     data.closeDuplicate();
   }
 
+  @Override
+  public long getLoadedBytes() {
+    return data.getLoadedBytes();
+  }
 }

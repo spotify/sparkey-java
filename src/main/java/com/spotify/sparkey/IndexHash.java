@@ -669,6 +669,10 @@ final class IndexHash {
     logData.closeDuplicate();
   }
 
+  long getLoadedBytes() {
+    return indexData.getLoadedBytes() + logData.getLoadedBytes();
+  }
+
   private class IndexHashEntry implements SparkeyReader.Entry {
     private int keyLen;
     private long valueLen;

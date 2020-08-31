@@ -228,6 +228,16 @@ final class ReadOnlyMemMap implements RandomAccessData {
     }
   }
 
+  public long getLoadedBytes() {
+    long bytes = 0;
+    for (MappedByteBuffer chunk : chunks) {
+      if (chunk.isLoaded()) {
+        bytes += chunk.capacity();
+      }
+    }
+    return bytes;
+  }
+
   private MappedByteBuffer[] getChunks() throws SparkeyReaderClosedException {
     MappedByteBuffer[] localChunks = chunks;
     if (localChunks == null) {

@@ -58,4 +58,9 @@ class UncompressedBlockRandomInput implements BlockRandomInput {
   public void closeDuplicate() {
     data.closeDuplicate();
   }
+
+  @Override
+  public long getLoadedBytes() {
+    return data.getLoadedBytes();
+  }
 }

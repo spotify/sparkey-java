@@ -141,6 +141,16 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
     };
   }
 
+  @Override
+  public long getLoadedBytes() {
+    return index.getLoadedBytes();
+  }
+
+  @Override
+  public long getTotalBytes() {
+    return indexFile.length() + logFile.length();
+  }
+
   private static boolean isValid(int keyLen, byte[] keyBuf, long position, int entryIndex, IndexHash indexHash) throws IOException {
     return indexHash.isAt(keyLen, keyBuf, position, entryIndex);
   }

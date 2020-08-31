@@ -82,6 +82,16 @@ public interface SparkeyReader extends Iterable<SparkeyReader.Entry>, Closeable 
     Type getType();
   }
 
+  /**
+   * Get the number of index and log file bytes loaded in memory.
+   */
+  long getLoadedBytes();
+
+  /**
+   * Get the total number of index and log file bytes.
+   */
+  long getTotalBytes();
+
   enum Type {
     PUT, DELETE
   }
