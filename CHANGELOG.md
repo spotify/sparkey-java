@@ -1,3 +1,6 @@
+#### 3.2.0
+* Added methods to reader: `getLoadedBytes()` and `getTotalBytes()`
+
 #### 3.1.0
 * Added support for zstd compression
 
