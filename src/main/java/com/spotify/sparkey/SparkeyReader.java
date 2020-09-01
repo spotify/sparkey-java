@@ -84,6 +84,9 @@ public interface SparkeyReader extends Iterable<SparkeyReader.Entry>, Closeable 
 
   /**
    * Get the number of index and log file bytes loaded in memory.
+   *
+   * This number is based on MappedByteBuffer.isLoaded() and the resolution is
+   * in increments of the memory chunk size (1 GB)
    */
   long getLoadedBytes();
 
