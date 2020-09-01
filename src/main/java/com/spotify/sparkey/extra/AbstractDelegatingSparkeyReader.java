@@ -72,4 +72,13 @@ public abstract class AbstractDelegatingSparkeyReader implements SparkeyReader {
     return getDelegateReader().iterator();
   }
 
+  @Override
+  public long getLoadedBytes() {
+    return getDelegateReader().getLoadedBytes();
+  }
+
+  @Override
+  public long getTotalBytes() {
+    return getDelegateReader().getTotalBytes();
+  }
 }

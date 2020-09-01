@@ -172,6 +172,11 @@ public class UtilTest {
     public void closeDuplicate() {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public long getLoadedBytes() {
+      return data.length;
+    }
   }
 
   @Test

@@ -42,10 +42,13 @@ public class LargeFilesTest extends BaseSystemTest {
 
     assertTrue(logFile.length() > 2000 * 5 * 1024);
     SparkeyReader reader = Sparkey.open(indexFile);
+    assertEquals(indexFile.length() + logFile.length(), reader.getTotalBytes());
+    assertTrue(reader.getLoadedBytes() <= reader.getTotalBytes());
     for (int i = 0; i < 2000; i += 100) {
       assertEquals(expectedValue, reader.getAsString("key_" + i));
     }
     assertEquals(null, reader.getAsString("key_" + 2000));
+    assertEquals(reader.getTotalBytes(), reader.getLoadedBytes());
     reader.close();
   }
 
@@ -75,11 +78,13 @@ public class LargeFilesTest extends BaseSystemTest {
 
     assertTrue(indexFile.length() > size * 8L);
     SparkeyReader reader = Sparkey.open(indexFile);
+    assertTrue(reader.getLoadedBytes() <= reader.getTotalBytes());
     for (int i = 0; i < 1000; i++) {
       long key = i * size / 1000L;
       assertEquals("" + (key % 13), reader.getAsString("key_" + key));
     }
     assertEquals(null, reader.getAsString("key_" + size));
+    assertEquals(reader.getTotalBytes(), reader.getLoadedBytes());
     reader.close();
   }
 }

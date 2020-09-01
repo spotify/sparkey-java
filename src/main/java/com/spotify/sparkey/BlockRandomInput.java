@@ -32,4 +32,6 @@ interface BlockRandomInput {
   BlockRandomInput duplicate();
 
   void closeDuplicate();
+
+  long getLoadedBytes();
 }
