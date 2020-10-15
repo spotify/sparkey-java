@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.IntStream;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNotSame;
@@ -29,7 +30,7 @@ public class ThreadLocalSparkeyReaderTest extends BaseSystemTest {
     super.setUp();
 
     SparkeyWriter writer = Sparkey.createNew(indexFile, CompressionType.NONE, 1024);
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10000; i++) {
       writer.put("key_" + i, "value_"+i);
     }
     writer.writeHash();
@@ -52,6 +53,18 @@ public class ThreadLocalSparkeyReaderTest extends BaseSystemTest {
     for (int i=0; i<10; i++) {
       assertEquals("value_"+i, reader.getAsString("key_"+i));
     }
+  }
+
+  @Test
+  public void testConcurrentUsageCorrectness() {
+    IntStream stream = IntStream.range(0, 10000);
+    stream.parallel().forEach(i -> {
+      try {
+        assertEquals("value_"+i, reader.getAsString("key_"+i));
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    });
   }
 
   @Test
