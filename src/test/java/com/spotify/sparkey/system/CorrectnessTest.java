@@ -21,7 +21,6 @@ import com.spotify.sparkey.Sparkey;
 import com.spotify.sparkey.SparkeyLogIterator;
 import com.spotify.sparkey.SparkeyReader;
 import com.spotify.sparkey.SparkeyWriter;
-
 import com.spotify.sparkey.TestSparkeyWriter;
 import org.junit.Assume;
 import org.junit.Test;
@@ -31,6 +30,7 @@ import java.io.IOException;
 import java.util.Iterator;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class CorrectnessTest extends BaseSystemTest {
@@ -173,6 +173,30 @@ public class CorrectnessTest extends BaseSystemTest {
     SparkeyReader reader = Sparkey.open(indexFile);
     assertEquals("Value1", reader.getAsString("Key1"));
     reader.close();
+  }
+
+  @Test
+  public void testCorrectHashLargeFile() throws IOException {
+    int N = 170000;
+    try (SparkeyWriter writer = Sparkey.createNew(indexFile, CompressionType.NONE, 0)) {
+      writer.setHashSeed(1234);
+      writer.setHashType(HashType.HASH_32_BITS);
+      for (int i = 0; i < N; i++) {
+        writer.put("Key" + i, "Value" + i);
+      }
+      writer.flush();
+
+      TestSparkeyWriter.writeHashAndCompare(writer);
+    }
+    try (SparkeyReader reader = Sparkey.open(indexFile)) {
+      assertEquals(0, reader.getIndexHeader().getGarbageSize());
+      long hashCollisions = reader.getIndexHeader().getHashCollisions();
+      System.out.println("Hash collisions: " + hashCollisions);
+      assertTrue(hashCollisions > 0);
+      for (int i = 0; i < N; i++) {
+        assertEquals("Value" + i, reader.getAsString("Key" + i));
+      }
+    }
   }
 
   @Test
