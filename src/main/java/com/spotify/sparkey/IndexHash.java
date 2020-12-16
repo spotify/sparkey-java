@@ -311,7 +311,8 @@ final class IndexHash {
       final int maxEntriesPerBlock = logHeader.getMaxEntriesPerBlock();
       final int entryIndexbits = calcEntryBlockBits(maxEntriesPerBlock);
 
-      final byte[] keyBuf = new byte[(int) logHeader.getMaxKeyLen()];
+      final byte[] keyBuf1 = new byte[(int) logHeader.getMaxKeyLen()];
+      final byte[] keyBuf2 = new byte[(int) logHeader.getMaxKeyLen()];
       while (iterator2.hasNext()) {
         final SortHelper.Entry entry = iterator2.next();
 
@@ -321,12 +322,12 @@ final class IndexHash {
         final long hash = entry.hash;
         switch (type) {
           case PUT:
-            put(indexData, header, hashCapacity, -1, keyBuf,
-                logData, keyBuf, hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
+            put(indexData, header, hashCapacity, -1, keyBuf1,
+                logData, keyBuf2, hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
                 hash, address);
             break;
           case DELETE:
-            delete(indexData, header, hashCapacity, -1, keyBuf, logData, keyBuf,
+            delete(indexData, header, hashCapacity, -1, keyBuf1, logData, keyBuf2,
                 hashData, addressData, header.getEntryBlockBitsBitmask(), entryIndexbits,
                 hash, address);
             break;
