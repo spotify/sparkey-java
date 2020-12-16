@@ -1,3 +1,10 @@
+#### 3.2.1
+* Fixed bug where creating hash files would erroneously lose some keys.
+  The bug only applies to cases where the construction mode is SORTING
+  and hash collisions are present (so typically only when hash mode is
+  32 bits and the number of keys is more than 100000).
+  The bug was introduced along with SORTING in 2.3.0
+
 #### 3.2.0
 * Added methods to reader: `getLoadedBytes()` and `getTotalBytes()`
 
