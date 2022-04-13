@@ -27,7 +27,7 @@ To import it with maven, use this for Java 8 or higher:
     <dependency>
       <groupId>com.spotify.sparkey</groupId>
       <artifactId>sparkey</artifactId>
-      <version>3.2.1</version>
+      <version>3.2.2</version>
     </dependency>
 
 Use this for Java 6 or 7:
