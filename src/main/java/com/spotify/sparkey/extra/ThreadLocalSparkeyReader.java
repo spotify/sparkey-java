@@ -83,4 +83,7 @@ public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
     return threadLocalReader.get();
   }
 
+  int numReaders() {
+    return readers.size();
+  }
 }
