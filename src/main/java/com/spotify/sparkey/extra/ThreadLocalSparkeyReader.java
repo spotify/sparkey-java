@@ -43,7 +43,7 @@ public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
   private ThreadLocalSparkeyReader(final SparkeyReader reader, final boolean owner) {
     Objects.requireNonNull(reader, "reader may not be null");
     this.readers.add(reader);
-    this.threadLocalReader = ThreadLocal.withInitial(() -> {
+    this.threadLocalReader = ThreadLocalWithFallback.withInitial(() -> {
       if (owner && firstRead.compareAndSet(false, true)) {
         return reader; // No need to duplicate the reader for the first usage if we are the owner of the reader
       }
