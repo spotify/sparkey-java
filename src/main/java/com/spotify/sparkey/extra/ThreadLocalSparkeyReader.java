@@ -21,37 +21,29 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A thread-safe Sparkey Reader.
  */
 public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
-  private final Collection<SparkeyReader> readers = new ArrayList<>();
+  private final SparkeyReader reader;
+  private final Set<SparkeyReader> readers = ConcurrentHashMap.newKeySet();
   private volatile ThreadLocal<SparkeyReader> threadLocalReader;
-  private final AtomicBoolean firstRead = new AtomicBoolean(false);
 
   public ThreadLocalSparkeyReader(File indexFile) throws IOException {
-    this(Sparkey.openSingleThreadedReader(indexFile), true);
+    this(Sparkey.openSingleThreadedReader(indexFile));
   }
 
-  public ThreadLocalSparkeyReader(final SparkeyReader reader) {
-    this(reader, false);
-  }
-
-  private ThreadLocalSparkeyReader(final SparkeyReader reader, final boolean owner) {
-    Objects.requireNonNull(reader, "reader may not be null");
-    this.readers.add(reader);
+  private ThreadLocalSparkeyReader(final SparkeyReader reader) {
+    this.reader = reader;
     this.threadLocalReader = ThreadLocal.withInitial(() -> {
-      if (owner && firstRead.compareAndSet(false, true)) {
-        return reader; // No need to duplicate the reader for the first usage if we are the owner of the reader
-      }
-
       SparkeyReader r = reader.duplicate();
-      synchronized (readers) {
-        readers.add(r);
-      }
+      readers.add(r);
       return r;
     });
   }
@@ -60,6 +52,7 @@ public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
   public void close() {
     this.threadLocalReader = null;
     synchronized (readers) {
+      reader.close();
       for (SparkeyReader reader : readers) {
         reader.close();
       }
@@ -77,10 +70,11 @@ public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
 
   @Override
   protected SparkeyReader getDelegateReader() {
-    if (threadLocalReader == null) {
+    final ThreadLocal<SparkeyReader> threadLocal = this.threadLocalReader;
+    if (threadLocal == null) {
       throw new IllegalStateException("reader is closed");
     }
-    return threadLocalReader.get();
+    return threadLocal.get();
   }
 
 }
