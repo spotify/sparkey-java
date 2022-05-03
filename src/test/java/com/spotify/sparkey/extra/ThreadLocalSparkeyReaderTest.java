@@ -78,23 +78,6 @@ public class ThreadLocalSparkeyReaderTest extends BaseSystemTest {
     assertNotSame(localReader, remoteReader);
   }
 
-  @Test
-  public void testClose() throws Exception {
-    final List<SparkeyReader> allReaders = new ArrayList<>();
-    final SparkeyReader reader = mock(SparkeyReader.class);
-    when(reader.duplicate()).thenAnswer((Answer<SparkeyReader>) invocation -> {
-      SparkeyReader result = mock(SparkeyReader.class);
-      allReaders.add(result);
-      return result;
-    });
-    allReaders.add(reader);
-
-    new ThreadLocalSparkeyReader(reader).close();
-    for (SparkeyReader r: allReaders) {
-      verify(r).close();
-    }
-  }
-
   @Test(expected = IllegalStateException.class)
   public void testAlreadyClosed() throws IOException {
     reader.close();
