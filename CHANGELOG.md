@@ -1,3 +1,9 @@
+#### 3.2.4
+* Fix for ThreadLocalSparkeyReader due to changed behavior of
+  ThreadLocal for tasks in ForkJoinPool.commonPool() in Java 16+
+* Fixed bug where calling isLoaded on a duplicated MappedByteBuffer
+  throws exception.
+
 #### 3.2.2
 * Updated version of zstd-jni.
   See https://github.com/spotify/sparkey-java/issues/52
