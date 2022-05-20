@@ -19,13 +19,8 @@ import com.spotify.sparkey.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A thread-safe Sparkey Reader.
@@ -41,7 +36,7 @@ public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
 
   private ThreadLocalSparkeyReader(final SparkeyReader reader) {
     this.reader = reader;
-    this.threadLocalReader = ThreadLocal.withInitial(() -> {
+    this.threadLocalReader = PersistentThreadLocal.withInitial(() -> {
       SparkeyReader r = reader.duplicate();
       readers.add(r);
       return r;
