@@ -34,6 +34,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   private final long mapBitmask = ((1L << mapBits) - 1);
   private final File file;
 
+  private final ReadOnlyMemMap source;
   private volatile MappedByteBuffer[] chunks;
   private final RandomAccessFile randomAccessFile;
   private final long size;
@@ -46,6 +47,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   private final Set<ReadOnlyMemMap> allInstances;
 
   ReadOnlyMemMap(File file) throws IOException {
+    this.source = this;
     this.file = file;
     this.allInstances = Collections.newSetFromMap(new IdentityHashMap<>());
     this.allInstances.add(this);
@@ -94,6 +96,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   }
 
   private ReadOnlyMemMap(ReadOnlyMemMap source, MappedByteBuffer[] chunks) {
+    this.source = source;
     this.file = source.file;
     this.allInstances = source.allInstances;
     this.randomAccessFile = source.randomAccessFile;
@@ -230,7 +233,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
 
   public long getLoadedBytes() {
     long bytes = 0;
-    for (MappedByteBuffer chunk : chunks) {
+    for (MappedByteBuffer chunk : source.chunks) {
       if (chunk.isLoaded()) {
         bytes += chunk.capacity();
       }
@@ -273,7 +276,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
         chunks[i] = (MappedByteBuffer) this.chunks[i].duplicate();
         chunks[i].order(ByteOrder.LITTLE_ENDIAN);
       }
-      ReadOnlyMemMap duplicate = new ReadOnlyMemMap(this, chunks);
+      ReadOnlyMemMap duplicate = new ReadOnlyMemMap(source, chunks);
       allInstances.add(duplicate);
       return duplicate;
     }
