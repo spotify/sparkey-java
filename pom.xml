@@ -217,7 +217,7 @@
     <dependency>
       <groupId>com.fasterxml.util</groupId>
       <artifactId>java-merge-sort</artifactId>
-      <version>1.0.1</version>
+      <version>1.1.0</version>
     </dependency>
 
     <!-- https://search.maven.org/artifact/org.xerial.snappy/snappy-java/1.1.7.2/bundle-->
