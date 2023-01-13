@@ -4,7 +4,7 @@
 
   <groupId>com.spotify.sparkey</groupId>
   <artifactId>sparkey</artifactId>
-  <version>3.2.5-SNAPSHOT</version>
+  <version>3.2.5</version>
   <packaging>jar</packaging>
 
   <parent>
