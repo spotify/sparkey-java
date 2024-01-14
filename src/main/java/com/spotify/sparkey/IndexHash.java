@@ -397,6 +397,8 @@ final class IndexHash {
     long slot = wantedSlot;
     long displacement = 0;
 
+    final long maxDisplacement = header.getMaxDisplacement();
+
     while (true) {
       long hash2 = hashData.readHash(indexData);
       long position2 = addressData.readAddress(indexData);
@@ -424,11 +426,10 @@ final class IndexHash {
           }
         }
       }
-      long otherDisplacement = getDisplacement(hashCapacity, slot, hash2);
-      if (displacement > otherDisplacement) {
+      displacement++;
+      if (displacement > maxDisplacement) {
         return null;
       }
-      displacement++;
       slot++;
       pos += slotSize;
       if (slot == hashCapacity) {
@@ -445,7 +446,8 @@ final class IndexHash {
                              final long hash, final long address) throws IOException {
     long wantedSlot = getWantedSlot(hash, hashCapacity);
 
-    long pos = wantedSlot * header.getSlotSize();
+    final int slotSize = header.getSlotSize();
+    long pos = wantedSlot * slotSize;
     indexData.seek(pos);
 
     long slot = wantedSlot;
@@ -488,8 +490,11 @@ final class IndexHash {
 
             // TODO: possibly optimize this to read and write stuff to move in chunks instead of one by one, to decrease number of seeks.
             while (true) {
-              long nextSlot = (slot + 1) % hashCapacity;
-              indexData.seek(nextSlot * header.getSlotSize());
+              long nextSlot = slot + 1;
+              if (nextSlot == hashCapacity) {
+                nextSlot = 0;
+              }
+              indexData.seek(nextSlot * slotSize);
               long hash3 = hashData.readHash(indexData);
               long position3 = addressData.readAddress(indexData);
 
@@ -500,14 +505,14 @@ final class IndexHash {
                 break;
               }
 
-              indexData.seek(slot * header.getSlotSize());
+              indexData.seek(slot * slotSize);
               hashData.writeHash(hash3, indexData);
               addressData.writeAddress(position3, indexData);
 
               slot = nextSlot;
             }
 
-            indexData.seek(slot * header.getSlotSize());
+            indexData.seek(slot * slotSize);
             hashData.writeHash(0, indexData);
             addressData.writeAddress(0, indexData);
             header.deletedEntry(keyLen2, valueLen2);
@@ -522,7 +527,7 @@ final class IndexHash {
       }
       displacement++;
       slot++;
-      pos += header.getSlotSize();
+      pos += slotSize;
       if (slot == hashCapacity) {
         pos = 0;
         slot = 0;

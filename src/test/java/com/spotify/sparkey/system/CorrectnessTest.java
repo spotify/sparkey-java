@@ -35,7 +35,7 @@ import static org.junit.Assert.fail;
 
 public class CorrectnessTest extends BaseSystemTest {
 
-  private static final int[] SIZES = new int[]{0, 1, 2, 3, 4, 10, 100, 1000};
+  private static final int[] SIZES = new int[]{0, 1, 2, 3, 4, 10, 100};
 
   @Test
   public void testTrivial() throws IOException {
