@@ -46,9 +46,6 @@ public class DelegatingSparkeyReaderTest {
     reader.iterator();
     verify(delegate).iterator();
 
-    reader.getLoadedBytes();
-    verify(delegate).getLoadedBytes();
-
     reader.getTotalBytes();
     verify(delegate).getTotalBytes();
 

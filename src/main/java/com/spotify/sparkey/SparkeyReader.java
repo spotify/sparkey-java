@@ -87,7 +87,10 @@ public interface SparkeyReader extends Iterable<SparkeyReader.Entry>, Closeable 
    *
    * This number is based on MappedByteBuffer.isLoaded() and the resolution is
    * in increments of the memory chunk size (1 GB)
+   *
+   * @deprecated because it won't always be possible to compute the correct value
    */
+  @Deprecated
   long getLoadedBytes();
 
   /**
