@@ -43,8 +43,8 @@ public class BaseSystemTest extends OpenMapsAsserter {
 
   @After
   public void tearDown() throws Exception {
-    indexFile.delete();
-    logFile.delete();
+    UtilTest.delete(indexFile);
+    UtilTest.delete(logFile);
     super.tearDown();
   }
 

@@ -8,15 +8,18 @@ import static org.junit.Assume.assumeTrue;
 
 public class OpenMapsAsserter {
 
+  private int openMaps;
+  private int openFiles;
+
   @Before
   public void setUp() throws Exception {
-    assumeTrue(0 == Sparkey.getOpenMaps());
-    assumeTrue(0 == Sparkey.getOpenFiles());
+    openMaps = Sparkey.getOpenMaps();
+    openFiles = Sparkey.getOpenFiles();
   }
 
   @After
   public void tearDown() throws Exception {
-    assertEquals(0, Sparkey.getOpenMaps());
-    assertEquals(0, Sparkey.getOpenFiles());
+    assertEquals(openMaps, Sparkey.getOpenMaps());
+    assertEquals(openFiles, Sparkey.getOpenFiles());
   }
 }

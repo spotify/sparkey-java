@@ -25,6 +25,12 @@ public class UtilTest {
     ReadOnlyMemMap.MAP_SIZE_BITS = bits;
   }
 
+  public static void delete(File f) {
+    if (f != null) {
+      f.delete();
+    }
+  }
+
   @Test
   public void testUnsignedByte() {
     assertEquals(0, Util.unsignedByte((byte) 0));

@@ -159,6 +159,9 @@ public final class Sparkey {
   }
 
   static File setEnding(File file, String ending) {
+    if (file == null) {
+      return null;
+    }
     String fileName = file.getName();
     if (fileName.endsWith(ending)) {
       return file;

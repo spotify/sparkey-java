@@ -18,6 +18,7 @@ package com.spotify.sparkey.system;
 import com.spotify.sparkey.CompressionType;
 import com.spotify.sparkey.Sparkey;
 import com.spotify.sparkey.SparkeyWriter;
+import com.spotify.sparkey.UtilTest;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -62,8 +63,8 @@ public class FsyncBenchmark {
 
     indexFile.deleteOnExit();
     logFile.deleteOnExit();
-    indexFile.delete();
-    logFile.delete();
+    UtilTest.delete(indexFile);
+    UtilTest.delete(logFile);
 
     writer = Sparkey.createNew(indexFile, compressionType, 1024);
     writer.setFsync(fsync);
@@ -72,8 +73,8 @@ public class FsyncBenchmark {
   @TearDown(Level.Trial)
   public void tearDown() throws IOException {
     writer.close();
-    indexFile.delete();
-    logFile.delete();
+    UtilTest.delete(indexFile);
+    UtilTest.delete(logFile);
   }
 
   @Benchmark

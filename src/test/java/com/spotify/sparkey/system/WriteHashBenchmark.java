@@ -18,6 +18,7 @@ package com.spotify.sparkey.system;
 import com.spotify.sparkey.CompressionType;
 import com.spotify.sparkey.Sparkey;
 import com.spotify.sparkey.SparkeyWriter;
+import com.spotify.sparkey.UtilTest;
 import org.openjdk.jmh.annotations.*;
 
 import java.io.File;
@@ -43,8 +44,8 @@ public class WriteHashBenchmark {
 
     indexFile.deleteOnExit();
     logFile.deleteOnExit();
-    indexFile.delete();
-    logFile.delete();
+    UtilTest.delete(indexFile);
+    UtilTest.delete(logFile);
 
     writer = Sparkey.createNew(indexFile, compressionType, 1024);
 
@@ -56,8 +57,8 @@ public class WriteHashBenchmark {
   @TearDown(Level.Trial)
   public void tearDown() throws IOException {
     writer.close();
-    indexFile.delete();
-    logFile.delete();
+    UtilTest.delete(indexFile);
+    UtilTest.delete(logFile);
   }
 
   @Param({"1000", "10000", "100000", "1000000", "10000000"})
