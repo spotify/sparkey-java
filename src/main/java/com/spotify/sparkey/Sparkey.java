@@ -18,6 +18,7 @@ package com.spotify.sparkey;
 import com.spotify.sparkey.extra.ThreadLocalSparkeyReader;
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class Sparkey {
@@ -103,6 +104,31 @@ public final class Sparkey {
    */
   public static SparkeyReader openThreadLocalReader(File file) throws IOException {
     return new ThreadLocalSparkeyReader(file);
+  }
+
+  /**
+   * Open a new, asyncronous thread-safe, sparkey reader
+   *
+   * This is similar to a ThreadLocalSparkeyReader but all reading will be done on an internal executor
+   * and the values will be returned as completion stages.
+   *
+   * @param file File base to use, the actual file endings will be set to .spi and .spl
+   * @param numThreads number of threads for the internal executor to use
+   * @return a new async reader,
+   */
+  public static AsyncSparkeyReader openAsyncReader(final File file, final int numThreads) throws IOException {
+    return AsyncSparkeyReaderImpl.open(file, numThreads);
+  }
+
+  /**
+   * Open a new, asyncronous thread-safe, sparkey reader
+c   *
+   * @param file File base to use, the actual file endings will be set to .spi and .spl
+   * @param executor executor service to use for sparkey reads
+   * @return a new async reader,
+   */
+  public static AsyncSparkeyReader openAsyncReader(final File file, final ExecutorService executor) throws IOException {
+    return AsyncSparkeyReaderImpl.open(file, executor);
   }
 
   /**

@@ -53,6 +53,10 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
     index.close();
   }
 
+  void closeDuplicate() {
+    index.closeDuplicate();
+  }
+
   @Override
   public String getAsString(String key) throws IOException {
     byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
