@@ -23,8 +23,17 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * A thread-safe Sparkey Reader.
+ * A thread-safe Sparkey Reader using ThreadLocal storage.
+ *
+ * @deprecated Use {@link PooledSparkeyReader} for Java 21+ applications with virtual
+ *             threads. ThreadLocalSparkeyReader has unbounded memory growth with
+ *             virtual threads due to PersistentThreadLocal's fallback map creating
+ *             one reader instance per virtual thread, which are never reused.
+ *             PooledSparkeyReader provides bounded memory usage with a fixed-size pool.
+ *
+ * @see PooledSparkeyReader recommended replacement for virtual thread environments
  */
+@Deprecated
 public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
   private final SparkeyReader reader;
   private final Set<SparkeyReader> readers = ConcurrentHashMap.newKeySet();
