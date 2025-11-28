@@ -1,4 +1,14 @@
 #### 3.3.0
+* **New PooledSparkeyReader**: Sparkey.open() now returns PooledSparkeyReader instead
+  of ThreadLocalSparkeyReader by default. This provides better memory safety for Java 21+
+  applications using virtual threads, where ThreadLocalSparkeyReader can cause unbounded
+  memory growth. Performance is on par with ThreadLocalSparkeyReader.
+* PooledSparkeyReader uses thread-ID-based striping with a bounded pool of readers,
+  providing O(pool size) memory usage instead of O(threads).
+* ThreadLocalSparkeyReader is now deprecated but still available via
+  Sparkey.openThreadLocalReader() for backward compatibility.
+* New factory methods: Sparkey.openPooledReader(file) and
+  Sparkey.openPooledReader(file, poolSize) for explicit pool configuration.
 * Fix ByteBufferCleaner to avoid deprecated sun.misc.Unsafe.invokeCleaner on Java 19+.
   Uses version-specific cleaners: Java 8 uses sun.reflect, Java 9-18 uses sun.misc.Unsafe.invokeCleaner,
   and Java 19+ uses a no-op implementation (automatic cleanup via JVM's internal Cleaner API).

@@ -15,6 +15,7 @@
  */
 package com.spotify.sparkey;
 
+import com.spotify.sparkey.extra.PooledSparkeyReader;
 import com.spotify.sparkey.extra.ThreadLocalSparkeyReader;
 import java.io.File;
 import java.io.IOException;
@@ -86,12 +87,16 @@ public final class Sparkey {
   /**
    * Open a new, thread-safe, sparkey reader
    *
+   * <p>Returns a {@link PooledSparkeyReader} with default pool size, which provides
+   * bounded memory usage and works well with both platform threads and virtual threads.
+   *
+   * <p>For the legacy ThreadLocal-based implementation, use {@link #openThreadLocalReader(File)}.
    *
    * @param file File base to use, the actual file endings will be set to .spi and .spl
-   * @return a new reader,
+   * @return a new pooled reader
    */
   public static SparkeyReader open(File file) throws IOException {
-    return new ThreadLocalSparkeyReader(file);
+    return PooledSparkeyReader.open(file);
   }
 
   /**
@@ -115,6 +120,44 @@ public final class Sparkey {
    */
   public static SparkeyReader openSingleThreadedReader(File file) throws IOException {
     return SingleThreadedSparkeyReader.open(file);
+  }
+
+  /**
+   * Open a new thread-safe pooled Sparkey reader with default pool size.
+   *
+   * <p>This implementation uses a fixed-size pool of readers with thread-ID-based striping,
+   * providing bounded memory usage regardless of thread count. Recommended for Java 21+
+   * applications using virtual threads.
+   *
+   * <p>Default pool size is {@code Runtime.getRuntime().availableProcessors() * 8},
+   * rounded up to the next power of 2.
+   *
+   * @param file File base to use, the actual file endings will be set to .spi and .spl
+   * @return a new pooled reader
+   * @see PooledSparkeyReader for more details on pool sizing and performance
+   */
+  public static SparkeyReader openPooledReader(File file) throws IOException {
+    return PooledSparkeyReader.open(file);
+  }
+
+  /**
+   * Open a new thread-safe pooled Sparkey reader with specified pool size.
+   *
+   * <p>This implementation uses a fixed-size pool of readers with thread-ID-based striping,
+   * providing bounded memory usage regardless of thread count. Recommended for Java 21+
+   * applications using virtual threads.
+   *
+   * <p>The pool size will be rounded up to the next power of 2 for efficient
+   * thread-to-reader mapping.
+   *
+   * @param file File base to use, the actual file endings will be set to .spi and .spl
+   * @param poolSize number of reader instances (minimum 1)
+   * @return a new pooled reader
+   * @throws IllegalArgumentException if poolSize < 1
+   * @see PooledSparkeyReader for more details on pool sizing and performance
+   */
+  public static SparkeyReader openPooledReader(File file, int poolSize) throws IOException {
+    return PooledSparkeyReader.open(file, poolSize);
   }
 
   /**
