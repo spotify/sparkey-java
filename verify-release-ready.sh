@@ -43,6 +43,41 @@ else
 fi
 echo
 
+# 2a. Check for leftover release artifacts
+echo "2a. Checking for leftover release artifacts..."
+ARTIFACTS_FOUND=0
+
+if [ -f release.properties ]; then
+    echo -e "${RED}✗ FAIL: release.properties exists from failed release${NC}"
+    echo "  Run: rm -f release.properties pom.xml.releaseBackup"
+    ARTIFACTS_FOUND=1
+fi
+
+if [ -f pom.xml.releaseBackup ]; then
+    echo -e "${RED}✗ FAIL: pom.xml.releaseBackup exists from failed release${NC}"
+    echo "  Run: rm -f release.properties pom.xml.releaseBackup"
+    ARTIFACTS_FOUND=1
+fi
+
+# Check for version tag that shouldn't exist yet
+CURRENT_VERSION=$(grep -m 1 "<version>" pom.xml | sed 's/.*<version>\(.*\)-SNAPSHOT<\/version>.*/\1/')
+if [ -n "$CURRENT_VERSION" ]; then
+    VERSION_TAG="sparkey-$CURRENT_VERSION"
+    if git tag | grep -q "^$VERSION_TAG\$"; then
+        echo -e "${RED}✗ FAIL: Tag $VERSION_TAG already exists (from failed release)${NC}"
+        echo "  Run: git tag -d $VERSION_TAG"
+        echo "  If also on remote: git push --delete origin $VERSION_TAG"
+        ARTIFACTS_FOUND=1
+    fi
+fi
+
+if [ $ARTIFACTS_FOUND -eq 0 ]; then
+    echo -e "${GREEN}✓ PASS: No leftover release artifacts${NC}"
+else
+    ERRORS=$((ERRORS + 1))
+fi
+echo
+
 # 3. Check we're on master branch
 echo "3. Checking branch..."
 BRANCH=$(git branch --show-current)
