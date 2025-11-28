@@ -16,7 +16,8 @@ public class PersistentThreadLocalTest {
 
   @Test
   public void testReturnsMainThreadIdWhenInMainThread() {
-    assertEquals(1, threadLocal.get().intValue());
+    // Don't assume main thread has ID 1 - it can vary by environment
+    assertEquals(Thread.currentThread().getId(), threadLocal.get().longValue());
   }
 
   @Test
