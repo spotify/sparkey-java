@@ -124,19 +124,8 @@ final class ReadOnlyMemMap implements RandomAccessData {
       Sparkey.decrOpenFiles();
       Util.nonThrowingClose(randomAccessFile);
     }
-    if (!onlyUser) {
-      // Wait a bit with closing so that all threads have a chance to see the that
-      // chunks and curChunks are null. If the sleep time is too short, the JVM can crash
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
     Sparkey.decrOpenMaps();
-    for (MappedByteBuffer chunk : chunks) {
-      ByteBufferCleaner.cleanMapping(chunk);
-    }
+    ByteBufferCleaner.cleanChunks(chunks, !onlyUser);
   }
 
   void closeDuplicate() {

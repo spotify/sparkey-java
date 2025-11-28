@@ -1,3 +1,10 @@
+#### 3.3.0
+* Fix ByteBufferCleaner to avoid deprecated sun.misc.Unsafe.invokeCleaner on Java 19+.
+  Uses version-specific cleaners: Java 8 uses sun.reflect, Java 9-18 uses sun.misc.Unsafe.invokeCleaner,
+  and Java 19+ uses a no-op implementation (automatic cleanup via JVM's internal Cleaner API).
+* Performance improvement on Java 19+: Skip both cleanup loop and 100ms sleep when manual cleanup
+  is not needed, providing faster close operations.
+
 #### 3.2.4
 * Fix for ThreadLocalSparkeyReader due to changed behavior of
   ThreadLocal for tasks in ForkJoinPool.commonPool() in Java 16+
