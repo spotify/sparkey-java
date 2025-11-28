@@ -1,5 +1,32 @@
 How to release:
 
+## Pre-Release Verification
+
+Before starting the release, run the verification script to catch common issues:
+
+```bash
+./verify-release-ready.sh
+```
+
+This checks:
+- Java 8 is active
+- Git working directory is clean
+- On master branch
+- Maven settings configured
+- Javadoc builds without errors
+- SCM URLs match git remote
+- Tests pass
+- GPG key is available
+- Bytecode version is Java 8
+
+If you have a custom SSH alias for GitHub (like `github.com-spotify`), configure git URL rewriting:
+
+```bash
+git config --local url."git@github.com-spotify:".insteadOf "git@github.com:"
+```
+
+## Maven Settings
+
 Add this to ~/.m2/settings.xml
 
 Needed:
