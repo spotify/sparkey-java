@@ -27,34 +27,57 @@ git config --local url."git@github.com-spotify:".insteadOf "git@github.com:"
 
 ## Maven Settings
 
-Add this to ~/.m2/settings.xml
+**IMPORTANT**: Sonatype has migrated from legacy OSSRH (oss.sonatype.org) to the
+Central Publishing Portal (central.sonatype.com). You need a user token, not a password.
 
-Needed:
+### Get User Token
+
+1. Go to https://central.sonatype.com/account
+2. Generate or view your user token
+3. Add the token to ~/.m2/settings.xml:
+
+```xml
 <settings>
   <servers>
     <server>
-      <id>ossrh</id>
-      <username>Spotify</username>
-      <password>your-jira-pwd</password>
+      <id>central</id>
+      <username>YOUR_TOKEN_USERNAME</username>
+      <password>YOUR_TOKEN_PASSWORD</password>
     </server>
   </servers>
 </settings>
+```
 
+Optional (for GPG passphrase):
+```xml
+<profiles>
+  <profile>
+    <id>gpg</id>
+    <activation>
+      <activeByDefault>true</activeByDefault>
+    </activation>
+    <properties>
+      <gpg.executable>gpg</gpg.executable>
+      <gpg.passphrase>YOUR_GPG_PASSPHRASE</gpg.passphrase>
+    </properties>
+  </profile>
+</profiles>
+```
 
-Optional:
-  <profiles>
-    <profile>
-      <id>ossrh</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <properties>
-        <gpg.executable>gpg</gpg.executable>
-        <gpg.passphrase>PASSPHRASE</gpg.passphrase>
-      </properties>
-    </profile>
-  </profiles>
+## Release Process
 
-$ mvn -B -Psonatype-oss-release release:clean release:prepare
-$ mvn -B -Psonatype-oss-release release:perform
+```bash
+# Run pre-release verification
+./verify-release-ready.sh
+
+# Prepare and perform release (auto-publishes to Maven Central)
+mvn -B release:clean release:prepare -Darguments="-DskipTests=true"
+mvn -B release:perform -Darguments="-DskipTests=true"
+```
+
+Note: The `-Psonatype-oss-release` profile is no longer needed with the new Central Publishing Portal.
+
+After release:perform completes, artifacts are automatically published to Maven Central (no manual staging steps needed).
+
+Verify at: https://central.sonatype.com/publishing/deployments
 
