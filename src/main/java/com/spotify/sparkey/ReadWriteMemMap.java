@@ -133,11 +133,7 @@ final class ReadWriteMemMap implements ReadWriteData {
 
     // Clean it up immediately since this should only be used from a single thread anyway
     Sparkey.decrOpenMaps();
-    for (int i = 0; i < chunks.length; i++) {
-      final MappedByteBuffer byteBuffer = chunks[i];
-      chunks[i] = null;
-      ByteBufferCleaner.cleanMapping(byteBuffer);
-    }
+    ByteBufferCleaner.cleanChunks(chunks, false);
   }
 
   @Override
