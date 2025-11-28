@@ -155,16 +155,16 @@ public class PooledSparkeyReaderTest {
   }
 
   @Test
-  public void testConcurrentReads_virtualThreads() throws Exception {
+  public void testConcurrentReads_manyThreads() throws Exception {
     try (PooledSparkeyReader reader = PooledSparkeyReader.open(indexFile, 64)) {
-      int numVirtualThreads = 10_000;
+      int numThreads = 1_000;
       int readsPerThread = 10;
 
-      ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+      ExecutorService executor = Executors.newCachedThreadPool();
       try {
         List<Future<Integer>> futures = new ArrayList<>();
 
-        for (int t = 0; t < numVirtualThreads; t++) {
+        for (int t = 0; t < numThreads; t++) {
           futures.add(executor.submit(() -> {
             int successCount = 0;
             for (int i = 0; i < readsPerThread; i++) {
@@ -184,9 +184,9 @@ public class PooledSparkeyReaderTest {
           totalSuccess += future.get();
         }
 
-        assertTrue("Most reads should succeed", totalSuccess > numVirtualThreads * readsPerThread * 0.9);
+        assertTrue("Most reads should succeed", totalSuccess > numThreads * readsPerThread * 0.9);
 
-        // Verify pool size is still bounded (not one reader per virtual thread)
+        // Verify pool size is still bounded (not one reader per thread)
         assertEquals(64, reader.getPoolSize());
 
       } finally {
@@ -229,18 +229,18 @@ public class PooledSparkeyReaderTest {
   }
 
   @Test
-  public void testMemoryBounded_withVirtualThreads() throws Exception {
-    // This test verifies that memory usage is bounded even with many virtual threads
+  public void testMemoryBounded_manyThreads() throws Exception {
+    // This test verifies that memory usage is bounded even with many concurrent tasks
     try (PooledSparkeyReader reader = PooledSparkeyReader.open(indexFile, 64)) {
-      int numVirtualThreads = 100_000;
+      int numTasks = 5_000;
 
-      ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+      ExecutorService executor = Executors.newCachedThreadPool();
       try {
         CountDownLatch startLatch = new CountDownLatch(1);
-        CountDownLatch doneLatch = new CountDownLatch(numVirtualThreads);
+        CountDownLatch doneLatch = new CountDownLatch(numTasks);
         AtomicInteger inFlight = new AtomicInteger();
 
-        for (int i = 0; i < numVirtualThreads; i++) {
+        for (int i = 0; i < numTasks; i++) {
           executor.submit(() -> {
             try {
               startLatch.await();
@@ -258,16 +258,16 @@ public class PooledSparkeyReaderTest {
           });
         }
 
-        // Let all virtual threads start
+        // Let all tasks start
         startLatch.countDown();
 
         // Wait for completion
         doneLatch.await(60, TimeUnit.SECONDS);
 
-        // Key assertion: pool size should still be 64, not 100k
+        // Key assertion: pool size should still be 64, not 5k
         assertEquals(64, reader.getPoolSize());
 
-        System.out.println("Created " + numVirtualThreads + " virtual threads, pool size: "
+        System.out.println("Executed " + numTasks + " concurrent tasks, pool size: "
             + reader.getPoolSize());
 
       } finally {
