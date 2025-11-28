@@ -67,17 +67,63 @@ Optional (for GPG passphrase):
 ## Release Process
 
 ```bash
-# Run pre-release verification
+# 1. Run pre-release verification
 ./verify-release-ready.sh
 
-# Prepare and perform release (auto-publishes to Maven Central)
-mvn -B release:clean release:prepare -Darguments="-DskipTests=true"
-mvn -B release:perform -Darguments="-DskipTests=true"
+# 2. Execute release (both prepare and perform can be run together)
+mvn -B release:prepare release:perform -Darguments="-DskipTests=true"
+
+# Note: Tests are skipped during release since they were already verified in step 1
 ```
 
-Note: The `-Psonatype-oss-release` profile is no longer needed with the new Central Publishing Portal.
+**What happens during release:**
+- `release:prepare` - Creates release tag, bumps version, commits to git, pushes to GitHub
+- `release:perform` - Builds artifacts, signs with GPG, uploads to Maven Central, auto-publishes
 
-After release:perform completes, artifacts are automatically published to Maven Central (no manual staging steps needed).
+**Important notes:**
+- The `-Psonatype-oss-release` profile is NO longer needed with Central Publishing Portal
+- Artifacts are automatically published (no manual staging/closing required)
+- Release takes ~1 minute total
 
-Verify at: https://central.sonatype.com/publishing/deployments
+## Post-Release Verification
+
+After release completes successfully:
+
+```bash
+# Quick verification
+git fetch --tags
+git tag | grep sparkey-X.X.X
+grep "<version>" pom.xml | head -1  # Should show X.X.X+1-SNAPSHOT
+```
+
+**Check deployment status:**
+https://central.sonatype.com/publishing/deployments
+
+**Full post-release checklist:**
+See [POST-RELEASE-CHECKLIST.md](POST-RELEASE-CHECKLIST.md) for complete verification steps.
+
+**Create GitHub release (optional):**
+```bash
+gh release create sparkey-X.X.X --title "Version X.X.X" --notes "See CHANGELOG.md"
+```
+
+## Troubleshooting Failed Releases
+
+If the release fails partway through:
+
+```bash
+# Run cleanup script
+./cleanup-failed-release.sh
+
+# Review what went wrong
+# Fix the issue (update pom.xml, fix tests, etc.)
+
+# Re-run verification
+./verify-release-ready.sh
+
+# Retry release
+mvn -B release:prepare release:perform -Darguments="-DskipTests=true"
+```
+
+Common issues and solutions documented in [POST-RELEASE-CHECKLIST.md](POST-RELEASE-CHECKLIST.md#troubleshooting)
 
