@@ -135,7 +135,7 @@ public class PooledSparkeyReader implements SparkeyReader {
    * @param poolSize number of reader instances (minimum 1)
    * @return a new pooled reader
    * @throws IOException if the file cannot be opened
-   * @throws IllegalArgumentException if poolSize < 1
+   * @throws IllegalArgumentException if poolSize &lt; 1
    */
   public static PooledSparkeyReader open(File indexFile, int poolSize) throws IOException {
     if (poolSize < 1) {

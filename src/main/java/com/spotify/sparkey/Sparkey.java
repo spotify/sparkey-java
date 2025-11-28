@@ -153,7 +153,7 @@ public final class Sparkey {
    * @param file File base to use, the actual file endings will be set to .spi and .spl
    * @param poolSize number of reader instances (minimum 1)
    * @return a new pooled reader
-   * @throws IllegalArgumentException if poolSize < 1
+   * @throws IllegalArgumentException if poolSize &lt; 1
    * @see PooledSparkeyReader for more details on pool sizing and performance
    */
   public static SparkeyReader openPooledReader(File file, int poolSize) throws IOException {
