@@ -7,6 +7,10 @@
   <version>3.3.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
+  <name>Sparkey</name>
+  <description>Java implementation of Sparkey, a simple constant key/value storage library</description>
+  <url>https://github.com/spotify/sparkey-java</url>
+
   <parent>
     <groupId>org.sonatype.oss</groupId>
     <artifactId>oss-parent</artifactId>
