@@ -17,7 +17,6 @@ package com.spotify.sparkey.benchmark;
 
 import com.spotify.sparkey.*;
 import com.spotify.sparkey.extra.PooledSparkeyReader;
-import com.spotify.sparkey.extra.ThreadLocalSparkeyReader;
 
 import java.io.File;
 import java.io.IOException;
@@ -74,12 +73,6 @@ public class PerformanceBenchmark {
       uncompressedResults.add(new BenchmarkResult("SingleThreadedSparkeyReader", ns));
     }
 
-    // Benchmark ThreadLocalSparkeyReader
-    try (SparkeyReader reader = Sparkey.openThreadLocalReader(uncompressedIndex)) {
-      double ns = benchmarkReader(reader, "ThreadLocalSparkeyReader");
-      uncompressedResults.add(new BenchmarkResult("ThreadLocalSparkeyReader", ns));
-    }
-
     // Benchmark PooledSparkeyReader
     try (SparkeyReader reader = PooledSparkeyReader.open(uncompressedIndex)) {
       double ns = benchmarkReader(reader, "PooledSparkeyReader");
@@ -98,12 +91,6 @@ public class PerformanceBenchmark {
     try (SparkeyReader reader = Sparkey.openSingleThreadedReader(snappyIndex)) {
       double ns = benchmarkReader(reader, "SingleThreadedSparkeyReader");
       compressedResults.add(new BenchmarkResult("SingleThreadedSparkeyReader", ns));
-    }
-
-    // Benchmark ThreadLocalSparkeyReader
-    try (SparkeyReader reader = Sparkey.openThreadLocalReader(snappyIndex)) {
-      double ns = benchmarkReader(reader, "ThreadLocalSparkeyReader");
-      compressedResults.add(new BenchmarkResult("ThreadLocalSparkeyReader", ns));
     }
 
     // Benchmark PooledSparkeyReader

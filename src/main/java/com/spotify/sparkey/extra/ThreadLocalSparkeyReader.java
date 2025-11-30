@@ -19,66 +19,24 @@ import com.spotify.sparkey.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * A thread-safe Sparkey Reader using ThreadLocal storage.
+ * A thread-safe Sparkey Reader.
  *
- * @deprecated Use {@link PooledSparkeyReader} for Java 21+ applications with virtual
- *             threads. ThreadLocalSparkeyReader has unbounded memory growth with
- *             virtual threads due to PersistentThreadLocal's fallback map creating
- *             one reader instance per virtual thread, which are never reused.
- *             PooledSparkeyReader provides bounded memory usage with a fixed-size pool.
+ * <p>This class extends {@link PooledSparkeyReader}, providing all the benefits of
+ * bounded memory usage and virtual thread compatibility while maintaining backward
+ * compatibility with existing code.
  *
- * @see PooledSparkeyReader recommended replacement for virtual thread environments
+ * @deprecated Use {@link PooledSparkeyReader} directly for better clarity.
+ *             This class is maintained for backward compatibility.
+ *
+ * @see PooledSparkeyReader the recommended implementation
  */
 @Deprecated
-public class ThreadLocalSparkeyReader extends AbstractDelegatingSparkeyReader {
-  private final SparkeyReader reader;
-  private final Set<SparkeyReader> readers = ConcurrentHashMap.newKeySet();
-  private volatile ThreadLocal<SparkeyReader> threadLocalReader;
+public class ThreadLocalSparkeyReader extends PooledSparkeyReader {
 
   public ThreadLocalSparkeyReader(File indexFile) throws IOException {
-    this(Sparkey.openSingleThreadedReader(indexFile));
-  }
-
-  private ThreadLocalSparkeyReader(final SparkeyReader reader) {
-    this.reader = reader;
-    this.threadLocalReader = PersistentThreadLocal.withInitial(() -> {
-      SparkeyReader r = reader.duplicate();
-      readers.add(r);
-      return r;
-    });
-  }
-
-  @Override
-  public void close() {
-    this.threadLocalReader = null;
-    synchronized (readers) {
-      reader.close();
-      for (SparkeyReader reader : readers) {
-        reader.close();
-      }
-      readers.clear();
-    }
-  }
-
-  @Override
-  public SparkeyReader duplicate() {
-    if (threadLocalReader == null) {
-      throw new IllegalStateException("reader is closed");
-    }
-    return this;
-  }
-
-  @Override
-  protected SparkeyReader getDelegateReader() {
-    final ThreadLocal<SparkeyReader> threadLocal = this.threadLocalReader;
-    if (threadLocal == null) {
-      throw new IllegalStateException("reader is closed");
-    }
-    return threadLocal.get();
+    super(Sparkey.openSingleThreadedReader(indexFile), computeDefaultPoolSize());
   }
 
 }

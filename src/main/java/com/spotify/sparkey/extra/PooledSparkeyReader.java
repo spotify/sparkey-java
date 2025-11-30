@@ -74,8 +74,6 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
  * <p><strong>Iteration is fully supported and thread-safe.</strong> Each call to
  * {@link #iterator()} creates an isolated duplicate of the index and opens its own
  * FileInputStream, so there is no shared mutable state between concurrent iterators.
- *
- * @see ThreadLocalSparkeyReader deprecated alternative with unbounded memory growth
  */
 public class PooledSparkeyReader implements SparkeyReader {
 
@@ -85,7 +83,7 @@ public class PooledSparkeyReader implements SparkeyReader {
   private final AtomicIntegerArray busy;  // Hint for contention avoidance
   private volatile boolean closed = false;
 
-  private PooledSparkeyReader(SparkeyReader baseReader, int requestedPoolSize) {
+  protected PooledSparkeyReader(SparkeyReader baseReader, int requestedPoolSize) {
     this.baseReader = baseReader;
 
     // Round up to next power of 2 for efficient bit-masking
@@ -294,7 +292,7 @@ public class PooledSparkeyReader implements SparkeyReader {
    *
    * This tradeoff may be revisited in the future if usage patterns change.
    */
-  private static int computeDefaultPoolSize() {
+  protected static int computeDefaultPoolSize() {
     int cores = Runtime.getRuntime().availableProcessors();
     return cores * 8;
   }

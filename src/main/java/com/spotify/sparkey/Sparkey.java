@@ -16,7 +16,6 @@
 package com.spotify.sparkey;
 
 import com.spotify.sparkey.extra.PooledSparkeyReader;
-import com.spotify.sparkey.extra.ThreadLocalSparkeyReader;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -102,12 +101,15 @@ public final class Sparkey {
   /**
    * Open a new, thread-safe, sparkey reader
    *
+   * @deprecated Use {@link #open(File)} or {@link #openPooledReader(File)} instead.
+   *             This method now returns a PooledSparkeyReader for better performance and memory usage.
    *
    * @param file File base to use, the actual file endings will be set to .spi and .spl
    * @return a new reader,
    */
+  @Deprecated
   public static SparkeyReader openThreadLocalReader(File file) throws IOException {
-    return new ThreadLocalSparkeyReader(file);
+    return PooledSparkeyReader.open(file);
   }
 
   /**
