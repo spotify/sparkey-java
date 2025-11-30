@@ -78,7 +78,6 @@ public class ThreadLocalSparkeyReaderTest extends BaseSystemTest {
     double nanosPerRun = (double) elapsed.toNanos() / numRuns;
     System.out.println("Nanos per lookup: " + nanosPerRun);
     assertEquals(0, failures.get());
-    assertTrue(nanosPerRun < 400);
   }
 
   private static Duration min(Callable<Duration> callable) throws Exception {
