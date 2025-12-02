@@ -199,6 +199,65 @@ public class PooledSparkeyReader implements SparkeyReader {
     T execute(SparkeyReader reader) throws IOException;
   }
 
+  /**
+   * Immutable defensive copy of an Entry.
+   *
+   * <p>Created inside synchronized blocks to prevent data corruption when Entry objects
+   * escape and are accessed by multiple threads. The underlying Entry objects are mutable
+   * and reused by readers, so we must copy all data before leaving the synchronized block.
+   */
+  private static class ImmutableEntry implements Entry {
+    private final byte[] key;
+    private final byte[] value;
+    private final Type type;
+
+    ImmutableEntry(Entry source) throws IOException {
+      this.key = source.getKey();
+      this.value = source.getValue();
+      this.type = source.getType();
+    }
+
+    @Override
+    public int getKeyLength() {
+      return key.length;
+    }
+
+    @Override
+    public byte[] getKey() {
+      return key;
+    }
+
+    @Override
+    public String getKeyAsString() {
+      return new String(key, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public long getValueLength() {
+      return value.length;
+    }
+
+    @Override
+    public byte[] getValue() {
+      return value;
+    }
+
+    @Override
+    public String getValueAsString() {
+      return new String(value, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public java.io.InputStream getValueAsStream() {
+      return new java.io.ByteArrayInputStream(value);
+    }
+
+    @Override
+    public Type getType() {
+      return type;
+    }
+  }
+
   // Override methods that need synchronization for thread safety
 
   @Override
@@ -213,7 +272,14 @@ public class PooledSparkeyReader implements SparkeyReader {
 
   @Override
   public Entry getAsEntry(byte[] key) throws IOException {
-    return executeOnPooledReader(reader -> reader.getAsEntry(key));
+    return executeOnPooledReader(reader -> {
+      Entry entry = reader.getAsEntry(key);
+      if (entry == null) {
+        return null;
+      }
+      // Create defensive copy - Entry objects are mutable and reused by readers
+      return new ImmutableEntry(entry);
+    });
   }
 
   // Non-critical methods that read immutable data or create isolated state
