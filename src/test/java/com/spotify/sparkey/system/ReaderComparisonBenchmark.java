@@ -17,7 +17,6 @@ package com.spotify.sparkey.system;
 
 import com.spotify.sparkey.*;
 import com.spotify.sparkey.extra.PooledSparkeyReader;
-import com.spotify.sparkey.extra.ThreadLocalSparkeyReader;
 import org.openjdk.jmh.annotations.*;
 
 import java.io.File;
@@ -48,7 +47,7 @@ public class ReaderComparisonBenchmark {
   @Param({"NONE", "SNAPPY"})  // Uncompressed and Snappy
   public String compressionType;
 
-  @Param({"SingleThreadedSparkeyReader", "ThreadLocalSparkeyReader", "PooledSparkeyReader"})
+  @Param({"SingleThreadedSparkeyReader", "PooledSparkeyReader"})
   public String readerType;
 
   @Setup(Level.Trial)
@@ -79,8 +78,6 @@ public class ReaderComparisonBenchmark {
   private SparkeyReader openReader(String type, CompressionType compression) throws IOException {
     if ("SingleThreadedSparkeyReader".equals(type)) {
       return Sparkey.openSingleThreadedReader(indexFile);
-    } else if ("ThreadLocalSparkeyReader".equals(type)) {
-      return Sparkey.openThreadLocalReader(indexFile);
     } else if ("PooledSparkeyReader".equals(type)) {
       return PooledSparkeyReader.open(indexFile);
     } else {

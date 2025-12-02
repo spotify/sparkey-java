@@ -106,7 +106,7 @@ public class ReloadableSparkeyReader extends AbstractDelegatingSparkeyReader {
     }
 
     try {
-      return new ThreadLocalSparkeyReader(indexFile);
+      return Sparkey.open(indexFile);
     } catch (IOException ex) {
       throw new ReloadableSparkeyReaderException("couldn't create sparkey reader", ex);
     }

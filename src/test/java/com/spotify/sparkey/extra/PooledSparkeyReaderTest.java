@@ -332,7 +332,7 @@ public class PooledSparkeyReaderTest {
       System.out.println("Nanos per lookup (PooledSparkeyReader): " + nanosPerRun);
       assertEquals(0, failures.get());
       // Performance benchmark - informational only (actual speed varies by hardware/load)
-      // Expected: ~100-150ns on modern hardware, faster than ThreadLocalSparkeyReader (~196ns)
+      // Expected: ~100-150ns on modern hardware
     }
   }
 
