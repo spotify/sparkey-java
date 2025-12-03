@@ -29,8 +29,8 @@ import java.util.concurrent.TimeUnit;
  * Tests both uncompressed and compressed files.
  */
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 2)
-@Measurement(iterations = 5, time = 2)
+@Warmup(iterations = 3, time = 3)
+@Measurement(iterations = 5, time = 3)
 @Fork(1)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
@@ -41,14 +41,23 @@ public class ReaderComparisonBenchmark {
   private SparkeyReader reader;
   private Random random;
 
-  @Param({"100000"})  // 100K entries
+  private String[] keys;
+  private String[] expectedValues;
+
+  private java.lang.foreign.Arena arena;
+  private java.util.List<java.lang.foreign.MemorySegment> lockedSegments = new java.util.ArrayList<>();
+
+  @Param({"100000"})
   public int numElements;
 
-  @Param({"NONE", "SNAPPY"})  // Uncompressed and Snappy
+  @Param({"NONE", "SNAPPY"})
   public String compressionType;
 
-  @Param({"SingleThreadedSparkeyReader", "PooledSparkeyReader"})
+  @Param({"SINGLE_THREADED_MMAP_JDK8", "POOLED_MMAP_JDK8"})
   public String readerType;
+
+  @Param({"0", "50"})
+  public int valuePadding;
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
@@ -62,31 +71,116 @@ public class ReaderComparisonBenchmark {
 
     CompressionType compression = CompressionType.valueOf(compressionType);
 
-    // Create test file
+    keys = new String[numElements];
+    expectedValues = new String[numElements];
+    for (int i = 0; i < numElements; i++) {
+      keys[i] = "key_" + i;
+      expectedValues[i] = valuePadding > 0
+          ? "value_" + i + "-" + "x".repeat(valuePadding)
+          : "value_" + i;
+    }
+
     try (SparkeyWriter writer = Sparkey.createNew(indexFile, compression, 1024)) {
       for (int i = 0; i < numElements; i++) {
-        writer.put("key_" + i, "value_" + i);
+        writer.put(keys[i], expectedValues[i]);
       }
       writer.writeHash();
     }
 
-    // Open with the specified reader type
-    reader = openReader(readerType, compression);
-    random = new Random(891273791623L);
+    try {
+      ReaderType type = ReaderType.valueOf(readerType);
+      if (!type.isAvailable()) {
+        throw new RuntimeException("Reader type not available: " + type);
+      }
+      if (!type.supports(compression)) {
+        throw new RuntimeException("Reader type does not support compression: " + type + " with " + compression);
+      }
+      reader = type.open(indexFile);
+      random = new Random(891273791623L);
+    } catch (IllegalArgumentException e) {
+      throw new RuntimeException("Unknown reader type: " + readerType);
+    }
+
+    System.out.println("=== Memory Lock Configuration ===");
+    try {
+      long maxLocked = MemoryLock.getMaxLockedMemory();
+      if (maxLocked == -1) {
+        System.out.println("ulimit -l: unlimited");
+      } else if (maxLocked == 0) {
+        System.out.println("ulimit -l: could not determine");
+      } else {
+        System.out.println("ulimit -l: " + maxLocked + " bytes (" + (maxLocked / 1024 / 1024) + " MB)");
+      }
+    } catch (Throwable t) {
+      System.out.println("MemoryLock not available (requires Java 22+)");
+    }
+
+    try {
+      lockSparkeyFiles();
+    } catch (Throwable t) {
+      System.out.println("Memory locking failed: " + t.getMessage());
+    }
   }
 
-  private SparkeyReader openReader(String type, CompressionType compression) throws IOException {
-    if ("SingleThreadedSparkeyReader".equals(type)) {
-      return Sparkey.openSingleThreadedReader(indexFile);
-    } else if ("PooledSparkeyReader".equals(type)) {
-      return PooledSparkeyReader.open(indexFile);
-    } else {
-      throw new IllegalArgumentException("Unknown reader type: " + type);
+  private void lockSparkeyFiles() throws Exception {
+    System.out.println("=== Locking Sparkey Files in Memory ===");
+    arena = java.lang.foreign.Arena.ofShared();
+    lockFile(indexFile, "index");
+    lockFile(logFile, "log");
+    System.out.println("File locking complete");
+  }
+
+  private void lockFile(File file, String name) throws Exception {
+    if (!file.exists()) {
+      return;
+    }
+
+    long fileSize = file.length();
+    System.out.println("Locking " + name + " file: " + file + " (" + (fileSize / 1024) + " KB)");
+
+    try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(
+           file.toPath(), java.nio.file.StandardOpenOption.READ)) {
+
+      java.lang.foreign.MemorySegment segment = channel.map(
+          java.nio.channels.FileChannel.MapMode.READ_ONLY,
+          0,
+          fileSize,
+          arena);
+
+      boolean locked = MemoryLock.lock(segment);
+      if (locked) {
+        lockedSegments.add(segment);
+        System.out.println("  Successfully locked " + name + " file");
+      } else {
+        System.out.println("  WARNING: Failed to lock " + name + " file");
+      }
     }
   }
 
   @TearDown(Level.Trial)
   public void tearDown() throws IOException {
+    if (!lockedSegments.isEmpty()) {
+      System.out.println("=== Unlocking Memory ===");
+      for (Object segment : lockedSegments) {
+        try {
+          MemoryLock.unlock((java.lang.foreign.MemorySegment) segment);
+        } catch (Throwable t) {
+          System.err.println("Failed to unlock: " + t.getMessage());
+        }
+      }
+      lockedSegments.clear();
+    }
+
+    if (arena != null) {
+      try {
+        java.lang.reflect.Method closeMethod = arena.getClass().getMethod("close");
+        closeMethod.invoke(arena);
+      } catch (Throwable t) {
+        System.err.println("Failed to close Arena: " + t.getMessage());
+      }
+      arena = null;
+    }
+
     reader.close();
     UtilTest.delete(indexFile);
     UtilTest.delete(logFile);
@@ -94,6 +188,55 @@ public class ReaderComparisonBenchmark {
 
   @Benchmark
   public String lookupRandom() throws IOException {
-    return reader.getAsString("key_" + random.nextInt(numElements));
+    int idx = random.nextInt(numElements);
+    String result = reader.getAsString(keys[idx]);
+    if (random.nextInt(100) == 0) {
+      if (!expectedValues[idx].equals(result)) {
+        throw new AssertionError("Validation failed!");
+      }
+    }
+    return result;
+  }
+
+  @Benchmark
+  @Threads(8)
+  public String lookupRandomMultithreaded8() throws IOException {
+    java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
+    int idx = rnd.nextInt(numElements);
+    String result = reader.getAsString(keys[idx]);
+    if (rnd.nextInt(100) == 0) {
+      if (!expectedValues[idx].equals(result)) {
+        throw new AssertionError("Validation failed!");
+      }
+    }
+    return result;
+  }
+
+  @Benchmark
+  @Threads(16)
+  public String lookupRandomMultithreaded16() throws IOException {
+    java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
+    int idx = rnd.nextInt(numElements);
+    String result = reader.getAsString(keys[idx]);
+    if (rnd.nextInt(100) == 0) {
+      if (!expectedValues[idx].equals(result)) {
+        throw new AssertionError("Validation failed!");
+      }
+    }
+    return result;
+  }
+
+  @Benchmark
+  @Threads(32)
+  public String lookupRandomMultithreaded32() throws IOException {
+    java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
+    int idx = rnd.nextInt(numElements);
+    String result = reader.getAsString(keys[idx]);
+    if (rnd.nextInt(100) == 0) {
+      if (!expectedValues[idx].equals(result)) {
+        throw new AssertionError("Validation failed!");
+      }
+    }
+    return result;
   }
 }

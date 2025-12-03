@@ -28,16 +28,16 @@ echo "Building and running JMH benchmarks..."
 echo "==================================================================="
 echo ""
 
-# Clean and compile
-echo "Compiling project..."
-mvn clean test-compile -q
+# Clean and build JAR (with MRJAR support for Java 22)
+echo "Building multi-release JAR..."
+mvn clean package -DskipTests -q
 echo "Build complete"
 echo ""
 
-# Build classpath
+# Build classpath with MRJAR
 echo "Building classpath..."
 mvn dependency:build-classpath -Dmdep.outputFile=cp.txt -q
-CP="target/test-classes:target/classes:$(cat cp.txt)"
+CP="target/test-classes:target/sparkey-3.3.1-SNAPSHOT.jar:$(cat cp.txt)"
 echo "Classpath ready"
 echo ""
 
@@ -65,17 +65,30 @@ echo ""
 echo "Running JMH ReaderComparisonBenchmark..."
 echo ""
 echo "Configuration:"
-echo "  - Uncompressed: ImmutableSparkeyReader, SingleThreadedSparkeyReader, PooledSparkeyReader"
-echo "  - Compressed (Snappy): SingleThreadedSparkeyReader, PooledSparkeyReader"
+echo "  - Reader types: SingleThreaded_MMap_JDK8, Pooled_MMap_JDK8"
+echo "  - Compression: NONE (uncompressed), SNAPPY"
+echo "  - Value sizes: 0 (small ~6 bytes), 50 (large ~56 bytes)"
 echo "  - Entries: 100,000"
-echo "  - Warmup: 3 iterations x 2 seconds"
-echo "  - Measurement: 5 iterations x 2 seconds"
+echo "  - Benchmarks: Single-threaded and Multi-threaded (8, 16, 32 threads)"
+echo "  - Warmup: 3 iterations x 3 seconds (9s total warmup)"
+echo "  - Measurement: 5 iterations x 3 seconds (15s total measurement)"
+echo "  - Estimated time: ~18 minutes"
 echo ""
 
-OUTPUT_FILE="performance-report-$(date +%Y%m%d-%H%M%S).txt"
+# Create benchmark-results directory if it doesn't exist
+mkdir -p benchmark-results
+
+OUTPUT_FILE="benchmark-results/performance-report-$(date +%Y%m%d-%H%M%S).txt"
+
+# Only test MappedByteBuffer-based readers (JDK 8+)
+# Java 22+ MemorySegment readers are in a separate branch
+JMH_PARAMS="-p readerType=SINGLE_THREADED_MMAP_JDK8,POOLED_MMAP_JDK8"
+echo ""
 
 java -cp "$CP" org.openjdk.jmh.Main \
   ReaderComparisonBenchmark \
+  $JMH_PARAMS \
+  -e 'lookupRandomMultithreaded.*compressionType=SNAPPY' \
   -rf text \
   -rff "$OUTPUT_FILE" \
   2>&1 | tee /dev/tty

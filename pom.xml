@@ -78,6 +78,10 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-gpg-plugin</artifactId>
         <version>1.5</version>
+        <configuration>
+          <!-- Skip GPG signing by default. Enable with -Dgpg.skip=false for releases -->
+          <skip>true</skip>
+        </configuration>
         <executions>
           <execution>
             <id>sign-artifacts</id>
