@@ -4,3 +4,4 @@ target/
 profiling.mph/
 *.spi
 *.spl
+benchmark-results/

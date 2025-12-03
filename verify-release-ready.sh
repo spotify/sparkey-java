@@ -23,12 +23,14 @@ if [ "$JAVA_VERSION" = "1" ]; then
     JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f2)
 fi
 
-if [ "$JAVA_VERSION" != "8" ]; then
-    echo -e "${RED}✗ FAIL: Java version is $JAVA_VERSION, but release requires Java 8${NC}"
-    echo "  Run: sdk use java 8.0.472-amzn"
+# Build requires Java 25+ (tests use release=25)
+if [ "$JAVA_VERSION" -lt "25" ]; then
+    echo -e "${RED}✗ FAIL: Java version is $JAVA_VERSION, but build requires Java 25+${NC}"
+    echo "  Tests are compiled with release=25"
+    echo "  Run: sdk use java 25-amzn"
     ERRORS=$((ERRORS + 1))
 else
-    echo -e "${GREEN}✓ PASS: Java 8 detected${NC}"
+    echo -e "${GREEN}✓ PASS: Java $JAVA_VERSION detected (Maven compiler.release=8 ensures Java 8 bytecode for main code)${NC}"
 fi
 echo
 
