@@ -164,6 +164,12 @@ public class ReaderComparisonBenchmark {
     }
   }
 
+  @TearDown(Level.Iteration)
+  public void iterationTeardown() throws InterruptedException {
+    // Give threads time to fully complete before starting next iteration
+    Thread.sleep(100);
+  }
+
   @TearDown(Level.Trial)
   public void tearDown() throws IOException {
     if (!lockedSegments.isEmpty()) {
