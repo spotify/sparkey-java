@@ -55,15 +55,18 @@ echo "Building and running JMH benchmarks..."
 echo "==================================================================="
 echo ""
 
+# Suppress Maven warnings from JAnsi and Guava
+export MAVEN_OPTS="--enable-native-access=ALL-UNNAMED --add-opens=jdk.unsupported/sun.misc=ALL-UNNAMED"
+
 # Clean and build JAR (with MRJAR support for Java 22)
 echo "Building multi-release JAR..."
-mvn clean package -DskipTests -q
+mvn clean package -DskipTests -q 2>&1 | grep -v "WARNING.*sun.misc.Unsafe" | grep -v "WARNING.*terminally deprecated" | grep -v "WARNING.*will be removed" | grep -v "WARNING.*Please consider reporting" || true
 echo "Build complete"
 echo ""
 
 # Build classpath with MRJAR
 echo "Building classpath..."
-mvn dependency:build-classpath -Dmdep.outputFile=cp.txt -q
+mvn dependency:build-classpath -Dmdep.outputFile=cp.txt -q 2>&1 | grep -v "WARNING.*sun.misc.Unsafe" | grep -v "WARNING.*terminally deprecated" | grep -v "WARNING.*will be removed" | grep -v "WARNING.*Please consider reporting" || true
 CP="target/test-classes:target/sparkey-3.3.1-SNAPSHOT.jar:$(cat cp.txt)"
 echo "Classpath ready"
 echo ""
@@ -113,15 +116,17 @@ echo ""
 
 java -cp "$CP" \
   --enable-native-access=ALL-UNNAMED \
+  --add-opens=jdk.unsupported/sun.misc=ALL-UNNAMED \
   org.openjdk.jmh.Main \
   ReaderComparisonBenchmark \
   $JMH_PARAMS \
+  -e 'lookupRandomMultithreaded.*readerType=SINGLE_THREADED_MMAP_JDK8' \
   -e 'lookupRandomMultithreaded.*compressionType=SNAPPY' \
   -wi $WARMUP_ITERATIONS -w $WARMUP_TIME \
   -i $MEASUREMENT_ITERATIONS -r $MEASUREMENT_TIME \
   -rf text \
   -rff "$OUTPUT_FILE" \
-  2>&1 | tee /dev/tty
+  2>&1 | grep --line-buffered -v "WARNING.*sun.misc.Unsafe" | grep --line-buffered -v "WARNING.*terminally deprecated" | grep --line-buffered -v "WARNING.*will be removed" | grep --line-buffered -v "WARNING.*Please consider reporting"
 
 echo ""
 echo "==================================================================="
