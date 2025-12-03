@@ -29,19 +29,20 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 /**
  * A thread-safe Sparkey reader using a fixed-size pool of reader instances.
  *
- * <p>This implementation uses hashed thread-ID-based striping to distribute load across a
- * bounded pool of readers, providing:
+ * <p>This implementation uses lock-free atomic operations with thread affinity
+ * to distribute load across a bounded pool of readers, providing:
  * <ul>
  *   <li>Bounded memory usage (O(pool size) instead of O(threads))</li>
  *   <li>Compatibility with virtual threads (no ThreadLocal unbounded growth)</li>
  *   <li>Low contention through reader pool sizing</li>
- *   <li>Uniform distribution even with pathological thread ID patterns</li>
+ *   <li>Cache locality via thread affinity (hash thread ID for initial slot)</li>
  *   <li>Simple, predictable performance characteristics</li>
+ *   <li>No blocking - only atomic operations</li>
  * </ul>
  *
- * <p>The implementation hashes thread IDs before mapping to pool slots to prevent
- * pathological cases where only even/odd thread IDs access Sparkey, which would
- * otherwise use only half the pool and double contention.
+ * <p>The implementation hashes thread IDs to select an initial "affinity" slot,
+ * providing cache locality benefits when there's no contention. On collision,
+ * it falls back to random slot selection.
  *
  * <p><strong>Recommended for Java 21+ applications using virtual threads.</strong>
  *
@@ -68,8 +69,9 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
  *
  * <h2>Thread Safety</h2>
  * All read methods (getAsString, getAsByteArray, getAsEntry) are thread-safe.
- * Read operations synchronize on individual pool readers, distributing contention
- * across the pool.
+ * Uses lock-free atomic operations to acquire exclusive reader access.
+ * Starts with thread-affinity slot, falls back to random on collision.
+ * No blocking or monitor locks.
  *
  * <p><strong>Iteration is fully supported and thread-safe.</strong> Each call to
  * {@link #iterator()} creates an isolated duplicate of the index and opens its own
@@ -143,6 +145,39 @@ public class PooledSparkeyReader implements SparkeyReader {
     return new PooledSparkeyReader(baseReader, poolSize);
   }
 
+  /**
+   * Create a pooled reader from an existing SparkeyReader instance with default pool size.
+   * Public to allow SparkeyImplSelector (Java 22+) to use optimized reader implementations.
+   *
+   * <p>Default pool size is {@code Runtime.getRuntime().availableProcessors() * 8},
+   * rounded up to the next power of 2.
+   *
+   * @param baseReader the reader to pool (will be duplicated)
+   * @return a new pooled reader
+   */
+  public static PooledSparkeyReader fromReader(SparkeyReader baseReader) {
+    return new PooledSparkeyReader(baseReader, computeDefaultPoolSize());
+  }
+
+  /**
+   * Create a pooled reader from an existing SparkeyReader instance with specified pool size.
+   * Public to allow SparkeyImplSelector (Java 22+) to use optimized reader implementations.
+   *
+   * <p>The pool size will be rounded up to the next power of 2 for efficient
+   * thread-to-reader mapping.
+   *
+   * @param baseReader the reader to pool (will be duplicated)
+   * @param poolSize number of reader instances (minimum 1)
+   * @return a new pooled reader
+   * @throws IllegalArgumentException if poolSize &lt; 1
+   */
+  public static PooledSparkeyReader fromReader(SparkeyReader baseReader, int poolSize) {
+    if (poolSize < 1) {
+      throw new IllegalArgumentException("poolSize must be >= 1, got: " + poolSize);
+    }
+    return new PooledSparkeyReader(baseReader, poolSize);
+  }
+
 
   /**
    * Hash thread ID to ensure uniform distribution across pool slots.
@@ -167,30 +202,43 @@ public class PooledSparkeyReader implements SparkeyReader {
   // Helper method to execute operations on pooled readers with busy tracking
 
   /**
-   * Execute an operation on a pooled reader with slot selection and busy tracking.
-   * Selects affinity slot based on thread ID, falls back to random if busy.
+   * Execute an operation on a pooled reader with lock-free slot acquisition.
+   * Uses atomic operations to acquire exclusive access to a reader slot.
+   * Starts with thread-affinity slot for cache locality, then random selection.
    */
   private <T> T executeOnPooledReader(ReaderOperation<T> operation) throws IOException {
     if (closed) {
       throw new IllegalStateException("Reader is closed");
     }
 
-    // Select slot (affinity or random fallback)
+    // Start with affinity slot based on thread ID for cache locality
     long threadId = Thread.currentThread().getId();
-    int affinitySlot = hashThreadId(threadId) & mask;
-    int slotToUse = (busy.get(affinitySlot) == 0) ? affinitySlot
-        : ThreadLocalRandom.current().nextInt(pool.length);
+    int slot = hashThreadId(threadId) & mask;
+    int attempts = 0;
 
-    SparkeyReader reader = pool[slotToUse];
-    // Increment busy counter (tracks number of threads using/waiting for this slot)
-    busy.incrementAndGet(slotToUse);
-    try {
-      synchronized (reader) {
-        return operation.execute(reader);
+    while (true) {
+      // Try to acquire this slot atomically (0 -> 1 transition means we got it)
+      if (busy.compareAndSet(slot, 0, 1)) {
+        // We got exclusive access!
+        try {
+          return operation.execute(pool[slot]);
+        } finally {
+          busy.set(slot, 0);  // Release - plain volatile write
+        }
       }
-    } finally {
-      // Decrement when done (slot is free when counter reaches 0)
-      busy.decrementAndGet(slotToUse);
+
+      // Failed to acquire - exponential backoff under high contention
+      // This frees up CPU for other threads to make progress instead of busy-spinning
+      if (attempts >= 5) {
+        // Exponential backoff: 100ns -> 200ns -> 400ns -> 800ns -> ...
+        // Capped at 1ms to remain responsive while reducing CPU waste
+        long parkNanos = Math.min(100L << (attempts - 5), 1_000_000L);
+        java.util.concurrent.locks.LockSupport.parkNanos(parkNanos);
+      }
+      attempts++;
+
+      // Slot was busy, pick a random slot for next iteration
+      slot = ThreadLocalRandom.current().nextInt(pool.length);
     }
   }
 
@@ -358,7 +406,10 @@ public class PooledSparkeyReader implements SparkeyReader {
    *
    * This tradeoff may be revisited in the future if usage patterns change.
    */
-  protected static int computeDefaultPoolSize() {
+  /**
+   * Package-protected to allow SparkeyImplSelector to compute pool size.
+   */
+  static int computeDefaultPoolSize() {
     int cores = Runtime.getRuntime().availableProcessors();
     return cores * 8;
   }
