@@ -16,7 +16,7 @@
 package com.spotify.sparkey.system;
 
 import com.spotify.sparkey.CompressionType;
-import com.spotify.sparkey.Sparkey;
+import com.spotify.sparkey.SingleThreadedSparkeyReader;
 import com.spotify.sparkey.SparkeyReader;
 import com.spotify.sparkey.extra.PooledSparkeyReader;
 
@@ -25,29 +25,32 @@ import java.io.IOException;
 
 /**
  * Enumeration of available Sparkey reader implementations for testing.
+ * Explicitly uses concrete reader classes (not Sparkey factory methods) to
+ * ensure specific implementations are tested, regardless of MRJAR behavior.
  */
 public enum ReaderType {
   /**
    * Single-threaded reader using MappedByteBuffer (JDK 8+).
    * Not thread-safe. Supports all compression types.
+   * Explicitly uses SingleThreadedSparkeyReader.open() to ensure MMap implementation.
    */
   SINGLE_THREADED_MMAP_JDK8("SingleThreaded_MMap_JDK8") {
     @Override
     public SparkeyReader open(File file) throws IOException {
-      return Sparkey.openSingleThreadedReader(file);
+      return SingleThreadedSparkeyReader.open(file);
     }
   },
 
   /**
    * Pooled reader using MappedByteBuffer (JDK 8+).
    * Thread-safe with fixed pool. Supports all compression types.
-   * Explicitly wraps SingleThreadedReader to ensure same base implementation.
+   * Explicitly wraps SingleThreadedSparkeyReader to ensure same base implementation.
    */
   POOLED_MMAP_JDK8("Pooled_MMap_JDK8") {
     @Override
     public SparkeyReader open(File file) throws IOException {
       // Explicitly open the base reader first to ensure we're pooling the JDK8 MMap version
-      SparkeyReader baseReader = Sparkey.openSingleThreadedReader(file);
+      SparkeyReader baseReader = SingleThreadedSparkeyReader.open(file);
       return PooledSparkeyReader.fromReader(baseReader);
     }
   };
