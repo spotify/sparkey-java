@@ -60,17 +60,31 @@ public class ReaderComparisonBenchmark {
   public int valuePadding;
 
   @Setup(Level.Trial)
-  public void setup() throws IOException {
+  public void setup(org.openjdk.jmh.infra.BenchmarkParams params) throws Exception {
+    // Create temp files for this trial
     indexFile = File.createTempFile("sparkey-jmh", ".spi");
-    logFile = Sparkey.getLogFile(indexFile);
-
     indexFile.deleteOnExit();
+    logFile = Sparkey.getLogFile(indexFile);
     logFile.deleteOnExit();
-    UtilTest.delete(indexFile);
-    UtilTest.delete(logFile);
 
+    // Create the file with current parameters
     CompressionType compression = CompressionType.valueOf(compressionType);
+    try (SparkeyWriter writer = Sparkey.createNew(indexFile, compression, 1024)) {
+      for (int i = 0; i < numElements; i++) {
+        String value = valuePadding > 0
+            ? "value_" + i + "-" + "x".repeat(valuePadding)
+            : "value_" + i;
+        writer.put("key_" + i, value);
+      }
+      writer.writeHash();
+    }
 
+    // Lock files in memory (silent on success, throws on failure)
+    arena = java.lang.foreign.Arena.ofShared();
+    lockFile(indexFile);
+    lockFile(logFile);
+
+    // Prepare expected keys/values for validation
     keys = new String[numElements];
     expectedValues = new String[numElements];
     for (int i = 0; i < numElements; i++) {
@@ -80,75 +94,37 @@ public class ReaderComparisonBenchmark {
           : "value_" + i;
     }
 
-    try (SparkeyWriter writer = Sparkey.createNew(indexFile, compression, 1024)) {
-      for (int i = 0; i < numElements; i++) {
-        writer.put(keys[i], expectedValues[i]);
-      }
-      writer.writeHash();
-    }
-
     try {
       ReaderType type = ReaderType.valueOf(readerType);
+
       if (!type.isAvailable()) {
         throw new RuntimeException("Reader type not available: " + type);
       }
       if (!type.supports(compression)) {
         throw new RuntimeException("Reader type does not support compression: " + type + " with " + compression);
       }
+
+      // Skip non-thread-safe readers for multithreaded benchmarks
+      int threads = params.getThreads();
+      if (threads > 1 && !type.supportsMultithreading()) {
+        throw new RuntimeException(
+            "SKIPPED: " + type + " does not support multithreading, skipping " + threads + "-thread benchmark");
+      }
+
       reader = type.open(indexFile);
       random = new Random(891273791623L);
     } catch (IllegalArgumentException e) {
       throw new RuntimeException("Unknown reader type: " + readerType);
     }
-
-    try {
-      lockSparkeyFiles();
-    } catch (Throwable t) {
-      // Memory locking failed - continue without it
-    }
   }
 
-  private void lockSparkeyFiles() throws Exception {
-    arena = java.lang.foreign.Arena.ofShared();
-    java.util.List<String> locked = new java.util.ArrayList<>();
-    java.util.List<String> failed = new java.util.ArrayList<>();
-
-    if (lockFile(indexFile)) {
-      locked.add(indexFile.getName() + " (" + (indexFile.length() / 1024) + " KB)");
-    } else {
-      failed.add(indexFile.getName());
-    }
-
-    if (lockFile(logFile)) {
-      locked.add(logFile.getName() + " (" + (logFile.length() / 1024) + " KB)");
-    } else {
-      failed.add(logFile.getName());
-    }
-
-    if (!locked.isEmpty()) {
-      System.out.println("mlocked: " + String.join(", ", locked));
-    }
-
-    if (!failed.isEmpty()) {
-      System.err.println("Failed to mlock: " + String.join(", ", failed));
-      try {
-        long maxLocked = MemoryLock.getMaxLockedMemory();
-        if (maxLocked > 0) {
-          System.err.println("ulimit -l: " + (maxLocked / 1024 / 1024) + " MB (may be insufficient)");
-        }
-      } catch (Throwable t) {
-        // Ignore
-      }
-    }
-  }
-
-  private boolean lockFile(File file) throws Exception {
+  private void lockFile(File file) throws Exception {
     if (!file.exists()) {
-      return false;
+      throw new RuntimeException("File does not exist: " + file);
     }
 
     try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(
-           file.toPath(), java.nio.file.StandardOpenOption.READ)) {
+        file.toPath(), java.nio.file.StandardOpenOption.READ)) {
 
       java.lang.foreign.MemorySegment segment = channel.map(
           java.nio.channels.FileChannel.MapMode.READ_ONLY,
@@ -156,11 +132,17 @@ public class ReaderComparisonBenchmark {
           file.length(),
           arena);
 
-      if (MemoryLock.lock(segment)) {
-        lockedSegments.add(segment);
-        return true;
+      if (!MemoryLock.lock(segment)) {
+        // mlock failed - throw exception
+        long maxLocked = MemoryLock.getMaxLockedMemory();
+        String msg = "Failed to mlock " + file.getName();
+        if (maxLocked > 0) {
+          msg += " (ulimit -l: " + (maxLocked / 1024 / 1024) + " MB may be insufficient)";
+        }
+        throw new RuntimeException(msg);
       }
-      return false;
+
+      lockedSegments.add(segment);
     }
   }
 
@@ -172,6 +154,7 @@ public class ReaderComparisonBenchmark {
 
   @TearDown(Level.Trial)
   public void tearDown() throws IOException {
+    // Unlock memory segments
     if (!lockedSegments.isEmpty()) {
       for (java.lang.foreign.MemorySegment segment : lockedSegments) {
         MemoryLock.unlock(segment);
@@ -179,12 +162,16 @@ public class ReaderComparisonBenchmark {
       lockedSegments.clear();
     }
 
+    // Close arena
     if (arena != null) {
       arena.close();
       arena = null;
     }
 
+    // Close reader
     reader.close();
+
+    // Delete files
     UtilTest.delete(indexFile);
     UtilTest.delete(logFile);
   }

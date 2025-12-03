@@ -95,7 +95,7 @@ echo ""
 echo "Running JMH ReaderComparisonBenchmark..."
 echo ""
 echo "Configuration:"
-echo "  - Reader types: SingleThreaded_MMap_JDK8, Pooled_MMap_JDK8"
+echo "  - Reader types: SingleThreaded_MMap_JDK8 (1 thread only), Pooled_MMap_JDK8 (all thread counts)"
 echo "  - Compression: NONE (uncompressed), SNAPPY"
 echo "  - Value sizes: 0 (small ~6 bytes), 50 (large ~56 bytes)"
 echo "  - Entries: 100,000"
@@ -109,7 +109,8 @@ mkdir -p benchmark-results
 
 OUTPUT_FILE="benchmark-results/performance-report-$(date +%Y%m%d-%H%M%S).txt"
 
-# Only test MappedByteBuffer-based readers (JDK 8+)
+# Test both single-threaded and pooled readers
+# Single-threaded reader will automatically skip multithreaded benchmarks (validation in setup)
 # Java 22+ MemorySegment readers are in a separate branch
 JMH_PARAMS="-p readerType=SINGLE_THREADED_MMAP_JDK8,POOLED_MMAP_JDK8"
 echo ""
@@ -120,8 +121,6 @@ java -cp "$CP" \
   org.openjdk.jmh.Main \
   ReaderComparisonBenchmark \
   $JMH_PARAMS \
-  -e 'lookupRandomMultithreaded.*readerType=SINGLE_THREADED_MMAP_JDK8' \
-  -e 'lookupRandomMultithreaded.*compressionType=SNAPPY' \
   -wi $WARMUP_ITERATIONS -w $WARMUP_TIME \
   -i $MEASUREMENT_ITERATIONS -r $MEASUREMENT_TIME \
   -rf text \

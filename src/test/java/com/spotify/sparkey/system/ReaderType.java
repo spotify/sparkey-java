@@ -37,6 +37,11 @@ public enum ReaderType {
     public SparkeyReader open(File file) throws IOException {
       return Sparkey.openSingleThreadedReader(file);
     }
+
+    @Override
+    public boolean supportsMultithreading() {
+      return false;
+    }
   },
 
   /**
@@ -48,6 +53,11 @@ public enum ReaderType {
     public SparkeyReader open(File file) throws IOException {
       SparkeyReader baseReader = Sparkey.openSingleThreadedReader(file);
       return PooledSparkeyReader.fromReader(baseReader);
+    }
+
+    @Override
+    public boolean supportsMultithreading() {
+      return true;
     }
   };
 
@@ -61,6 +71,12 @@ public enum ReaderType {
    * Open a reader of this type.
    */
   public abstract SparkeyReader open(File file) throws IOException;
+
+  /**
+   * Check if this reader type supports multithreaded access.
+   * @return true if this reader can be safely used by multiple threads concurrently
+   */
+  public abstract boolean supportsMultithreading();
 
   /**
    * Check if this reader type is available on the current JVM.
