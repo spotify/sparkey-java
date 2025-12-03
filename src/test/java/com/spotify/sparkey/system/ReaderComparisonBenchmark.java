@@ -44,6 +44,9 @@ public class ReaderComparisonBenchmark {
   private String[] keys;
   private String[] expectedValues;
 
+  private java.lang.foreign.Arena arena;
+  private java.util.List<java.lang.foreign.MemorySegment> lockedSegments = new java.util.ArrayList<>();
+
   @Param({"100000"})
   public int numElements;
 
@@ -97,10 +100,86 @@ public class ReaderComparisonBenchmark {
     } catch (IllegalArgumentException e) {
       throw new RuntimeException("Unknown reader type: " + readerType);
     }
+
+    System.out.println("=== Memory Lock Configuration ===");
+    try {
+      long maxLocked = MemoryLock.getMaxLockedMemory();
+      if (maxLocked == -1) {
+        System.out.println("ulimit -l: unlimited");
+      } else if (maxLocked == 0) {
+        System.out.println("ulimit -l: could not determine");
+      } else {
+        System.out.println("ulimit -l: " + maxLocked + " bytes (" + (maxLocked / 1024 / 1024) + " MB)");
+      }
+    } catch (Throwable t) {
+      System.out.println("MemoryLock check failed: " + t.getMessage());
+    }
+
+    try {
+      lockSparkeyFiles();
+    } catch (Throwable t) {
+      System.out.println("Memory locking failed: " + t.getMessage());
+    }
+  }
+
+  private void lockSparkeyFiles() throws Exception {
+    System.out.println("=== Locking Sparkey Files in Memory ===");
+    arena = java.lang.foreign.Arena.ofShared();
+    lockFile(indexFile, "index");
+    lockFile(logFile, "log");
+    System.out.println("File locking complete");
+  }
+
+  private void lockFile(File file, String name) throws Exception {
+    if (!file.exists()) {
+      return;
+    }
+
+    long fileSize = file.length();
+    System.out.println("Locking " + name + " file: " + file + " (" + (fileSize / 1024) + " KB)");
+
+    try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(
+           file.toPath(), java.nio.file.StandardOpenOption.READ)) {
+
+      java.lang.foreign.MemorySegment segment = channel.map(
+          java.nio.channels.FileChannel.MapMode.READ_ONLY,
+          0,
+          fileSize,
+          arena);
+
+      boolean locked = MemoryLock.lock(segment);
+      if (locked) {
+        lockedSegments.add(segment);
+        System.out.println("  Successfully locked " + name + " file");
+      } else {
+        System.out.println("  WARNING: Failed to lock " + name + " file");
+      }
+    }
   }
 
   @TearDown(Level.Trial)
   public void tearDown() throws IOException {
+    if (!lockedSegments.isEmpty()) {
+      System.out.println("=== Unlocking Memory ===");
+      for (java.lang.foreign.MemorySegment segment : lockedSegments) {
+        try {
+          MemoryLock.unlock(segment);
+        } catch (Throwable t) {
+          System.err.println("Failed to unlock: " + t.getMessage());
+        }
+      }
+      lockedSegments.clear();
+    }
+
+    if (arena != null) {
+      try {
+        arena.close();
+      } catch (Throwable t) {
+        System.err.println("Failed to close Arena: " + t.getMessage());
+      }
+      arena = null;
+    }
+
     reader.close();
     UtilTest.delete(indexFile);
     UtilTest.delete(logFile);
