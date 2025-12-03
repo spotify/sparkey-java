@@ -70,11 +70,10 @@ public class ReaderComparisonBenchmark {
 
     keys = new String[numElements];
     expectedValues = new String[numElements];
-    String padding = valuePadding > 0 ? repeatString("x", valuePadding) : "";
     for (int i = 0; i < numElements; i++) {
       keys[i] = "key_" + i;
       expectedValues[i] = valuePadding > 0
-          ? "value_" + i + "-" + padding
+          ? "value_" + i + "-" + "x".repeat(valuePadding)
           : "value_" + i;
     }
 
@@ -98,15 +97,6 @@ public class ReaderComparisonBenchmark {
     } catch (IllegalArgumentException e) {
       throw new RuntimeException("Unknown reader type: " + readerType);
     }
-  }
-
-  // Java 8 compatible String.repeat()
-  private static String repeatString(String s, int count) {
-    StringBuilder sb = new StringBuilder(s.length() * count);
-    for (int i = 0; i < count; i++) {
-      sb.append(s);
-    }
-    return sb.toString();
   }
 
   @TearDown(Level.Trial)
