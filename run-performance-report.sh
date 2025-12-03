@@ -3,11 +3,38 @@ set -e
 
 # Performance Report Runner - Uses JMH for scientific benchmarking
 # Compares different SparkeyReader implementations
+#
+# Usage:
+#   ./run-performance-report.sh [--quick|--full]
+#
+# Options:
+#   --quick    Fast smoke test (1 warmup x 1s, 2 measurement x 2s) - ~5 min
+#   --full     Full benchmark (3 warmup x 3s, 5 measurement x 3s) - ~15 min (default)
+
+# Parse command line arguments
+MODE="full"
+if [ "$1" = "--quick" ]; then
+  MODE="quick"
+  WARMUP_ITERATIONS=1
+  WARMUP_TIME=1
+  MEASUREMENT_ITERATIONS=2
+  MEASUREMENT_TIME=2
+elif [ "$1" = "--full" ] || [ -z "$1" ]; then
+  MODE="full"
+  WARMUP_ITERATIONS=3
+  WARMUP_TIME=3
+  MEASUREMENT_ITERATIONS=5
+  MEASUREMENT_TIME=3
+else
+  echo "Unknown option: $1"
+  echo "Usage: $0 [--quick|--full]"
+  exit 1
+fi
 
 cd "$(dirname "$0")"
 
 echo "==================================================================="
-echo "Sparkey Reader Performance Report (JMH)"
+echo "Sparkey Reader Performance Report (JMH) - ${MODE} mode"
 echo "==================================================================="
 echo ""
 
@@ -70,9 +97,8 @@ echo "  - Compression: NONE (uncompressed), SNAPPY"
 echo "  - Value sizes: 0 (small ~6 bytes), 50 (large ~56 bytes)"
 echo "  - Entries: 100,000"
 echo "  - Benchmarks: Single-threaded and Multi-threaded (8, 16, 32 threads)"
-echo "  - Warmup: 3 iterations x 3 seconds (9s total warmup)"
-echo "  - Measurement: 5 iterations x 3 seconds (15s total measurement)"
-echo "  - Estimated time: ~18 minutes"
+echo "  - Warmup: ${WARMUP_ITERATIONS} iterations x ${WARMUP_TIME} seconds"
+echo "  - Measurement: ${MEASUREMENT_ITERATIONS} iterations x ${MEASUREMENT_TIME} seconds"
 echo ""
 
 # Create benchmark-results directory if it doesn't exist
@@ -89,6 +115,8 @@ java -cp "$CP" org.openjdk.jmh.Main \
   ReaderComparisonBenchmark \
   $JMH_PARAMS \
   -e 'lookupRandomMultithreaded.*compressionType=SNAPPY' \
+  -wi $WARMUP_ITERATIONS -w $WARMUP_TIME \
+  -i $MEASUREMENT_ITERATIONS -r $MEASUREMENT_TIME \
   -rf text \
   -rff "$OUTPUT_FILE" \
   2>&1 | tee /dev/tty
