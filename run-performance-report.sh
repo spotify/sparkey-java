@@ -71,7 +71,7 @@ echo ""
 # Run JMH annotation processor
 echo "Running JMH annotation processor..."
 mkdir -p target/generated-test-sources/jmh
-JMH_PROC_CP="$HOME/.m2/repository/org/openjdk/jmh/jmh-generator-annprocess/1.21/jmh-generator-annprocess-1.21.jar:$HOME/.m2/repository/org/openjdk/jmh/jmh-core/1.21/jmh-core-1.21.jar"
+JMH_PROC_CP="$HOME/.m2/repository/org/openjdk/jmh/jmh-generator-annprocess/1.37/jmh-generator-annprocess-1.37.jar:$HOME/.m2/repository/org/openjdk/jmh/jmh-core/1.37/jmh-core-1.37.jar"
 javac -cp "$CP" \
   -processorpath "$JMH_PROC_CP" \
   -processor org.openjdk.jmh.generators.BenchmarkProcessor \
