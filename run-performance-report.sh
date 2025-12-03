@@ -111,7 +111,9 @@ OUTPUT_FILE="benchmark-results/performance-report-$(date +%Y%m%d-%H%M%S).txt"
 JMH_PARAMS="-p readerType=SINGLE_THREADED_MMAP_JDK8,POOLED_MMAP_JDK8"
 echo ""
 
-java -cp "$CP" org.openjdk.jmh.Main \
+java -cp "$CP" \
+  --enable-native-access=ALL-UNNAMED \
+  org.openjdk.jmh.Main \
   ReaderComparisonBenchmark \
   $JMH_PARAMS \
   -e 'lookupRandomMultithreaded.*compressionType=SNAPPY' \

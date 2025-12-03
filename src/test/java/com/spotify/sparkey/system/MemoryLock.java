@@ -60,24 +60,9 @@ public class MemoryLock {
    */
   public static boolean lock(MemorySegment segment) {
     try {
-      long address = segment.address();
-      long size = segment.byteSize();
-
-      // Call native mlock(addr, len)
-      // This guarantees all pages are resident in RAM when it returns
-      int result = (int) MLOCK.invoke(segment, size);
-
-      if (result == 0) {
-        System.out.println("Successfully locked " + size + " bytes at address 0x" +
-                          Long.toHexString(address) + " (" + (size / 1024) + " KB)");
-        return true;
-      } else {
-        System.err.println("mlock() failed with code " + result +
-                          " (may need to increase ulimit -l or run with CAP_IPC_LOCK)");
-        return false;
-      }
+      int result = (int) MLOCK.invoke(segment, segment.byteSize());
+      return result == 0;
     } catch (Throwable e) {
-      System.err.println("Failed to lock memory: " + e.getMessage());
       return false;
     }
   }
@@ -90,22 +75,9 @@ public class MemoryLock {
    */
   public static boolean unlock(MemorySegment segment) {
     try {
-      long address = segment.address();
-      long size = segment.byteSize();
-
-      // Call native munlock(addr, len)
-      int result = (int) MUNLOCK.invoke(segment, size);
-
-      if (result == 0) {
-        System.out.println("Successfully unlocked " + size + " bytes at address 0x" +
-                          Long.toHexString(address));
-        return true;
-      } else {
-        System.err.println("munlock() failed with code " + result);
-        return false;
-      }
+      int result = (int) MUNLOCK.invoke(segment, segment.byteSize());
+      return result == 0;
     } catch (Throwable e) {
-      System.err.println("Failed to unlock memory: " + e.getMessage());
       return false;
     }
   }

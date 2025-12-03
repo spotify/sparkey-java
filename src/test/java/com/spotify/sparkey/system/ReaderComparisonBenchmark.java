@@ -101,42 +101,51 @@ public class ReaderComparisonBenchmark {
       throw new RuntimeException("Unknown reader type: " + readerType);
     }
 
-    System.out.println("=== Memory Lock Configuration ===");
-    try {
-      long maxLocked = MemoryLock.getMaxLockedMemory();
-      if (maxLocked == -1) {
-        System.out.println("ulimit -l: unlimited");
-      } else if (maxLocked == 0) {
-        System.out.println("ulimit -l: could not determine");
-      } else {
-        System.out.println("ulimit -l: " + maxLocked + " bytes (" + (maxLocked / 1024 / 1024) + " MB)");
-      }
-    } catch (Throwable t) {
-      System.out.println("MemoryLock check failed: " + t.getMessage());
-    }
-
     try {
       lockSparkeyFiles();
     } catch (Throwable t) {
-      System.out.println("Memory locking failed: " + t.getMessage());
+      // Memory locking failed - continue without it
     }
   }
 
   private void lockSparkeyFiles() throws Exception {
-    System.out.println("=== Locking Sparkey Files in Memory ===");
     arena = java.lang.foreign.Arena.ofShared();
-    lockFile(indexFile, "index");
-    lockFile(logFile, "log");
-    System.out.println("File locking complete");
-  }
+    java.util.List<String> locked = new java.util.ArrayList<>();
+    java.util.List<String> failed = new java.util.ArrayList<>();
 
-  private void lockFile(File file, String name) throws Exception {
-    if (!file.exists()) {
-      return;
+    if (lockFile(indexFile)) {
+      locked.add(indexFile.getName() + " (" + (indexFile.length() / 1024) + " KB)");
+    } else {
+      failed.add(indexFile.getName());
     }
 
-    long fileSize = file.length();
-    System.out.println("Locking " + name + " file: " + file + " (" + (fileSize / 1024) + " KB)");
+    if (lockFile(logFile)) {
+      locked.add(logFile.getName() + " (" + (logFile.length() / 1024) + " KB)");
+    } else {
+      failed.add(logFile.getName());
+    }
+
+    if (!locked.isEmpty()) {
+      System.out.println("mlocked: " + String.join(", ", locked));
+    }
+
+    if (!failed.isEmpty()) {
+      System.err.println("Failed to mlock: " + String.join(", ", failed));
+      try {
+        long maxLocked = MemoryLock.getMaxLockedMemory();
+        if (maxLocked > 0) {
+          System.err.println("ulimit -l: " + (maxLocked / 1024 / 1024) + " MB (may be insufficient)");
+        }
+      } catch (Throwable t) {
+        // Ignore
+      }
+    }
+  }
+
+  private boolean lockFile(File file) throws Exception {
+    if (!file.exists()) {
+      return false;
+    }
 
     try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(
            file.toPath(), java.nio.file.StandardOpenOption.READ)) {
@@ -144,39 +153,28 @@ public class ReaderComparisonBenchmark {
       java.lang.foreign.MemorySegment segment = channel.map(
           java.nio.channels.FileChannel.MapMode.READ_ONLY,
           0,
-          fileSize,
+          file.length(),
           arena);
 
-      boolean locked = MemoryLock.lock(segment);
-      if (locked) {
+      if (MemoryLock.lock(segment)) {
         lockedSegments.add(segment);
-        System.out.println("  Successfully locked " + name + " file");
-      } else {
-        System.out.println("  WARNING: Failed to lock " + name + " file");
+        return true;
       }
+      return false;
     }
   }
 
   @TearDown(Level.Trial)
   public void tearDown() throws IOException {
     if (!lockedSegments.isEmpty()) {
-      System.out.println("=== Unlocking Memory ===");
       for (java.lang.foreign.MemorySegment segment : lockedSegments) {
-        try {
-          MemoryLock.unlock(segment);
-        } catch (Throwable t) {
-          System.err.println("Failed to unlock: " + t.getMessage());
-        }
+        MemoryLock.unlock(segment);
       }
       lockedSegments.clear();
     }
 
     if (arena != null) {
-      try {
-        arena.close();
-      } catch (Throwable t) {
-        System.err.println("Failed to close Arena: " + t.getMessage());
-      }
+      arena.close();
       arena = null;
     }
 
