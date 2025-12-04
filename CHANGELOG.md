@@ -1,3 +1,22 @@
+#### (next version)
+* **Performance optimization**: New `readFullyCompare()` method combines reading and comparing bytes
+  in a single operation, avoiding temporary buffer allocation and data copying. Provides 11-17%
+  improvement in high-concurrency uncompressed workloads and 2-8% improvement in most other scenarios.
+* **PooledSparkeyReader improvements**: Optimized with lock-free atomic operations for better
+  performance under high contention.
+* Fix thread-safety bug in PooledSparkeyReader.getAsEntry() where the entry object could be shared
+  across threads.
+* Internal simplification: ThreadLocalSparkeyReader now extends PooledSparkeyReader to reduce code
+  duplication.
+* Build improvements: Added comprehensive JMH benchmarking infrastructure and performance testing tools.
+* Dependency updates:
+  - Bump commons-io from 2.7 to 2.14.0
+  - Bump guava from 29.0-jre to 32.0.0-jre
+  - Bump snappy-java from 1.1.7.2 to 1.1.10.4
+  - Bump logback-classic from 1.2.3 to 1.2.13
+  - Upgrade zstd-jni from 1.5.2-2 to 1.5.2-5
+  - Upgrade slf4j-api from 1.7.2 to 1.7.36
+
 #### 3.3.0
 * **New PooledSparkeyReader**: Sparkey.open() now returns PooledSparkeyReader instead
   of ThreadLocalSparkeyReader by default. This provides better memory safety for Java 21+
