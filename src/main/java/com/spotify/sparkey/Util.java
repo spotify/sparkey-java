@@ -259,6 +259,14 @@ final class Util {
     return true;
   }
 
+  /**
+   * Compare byte arrays with offsets.
+   * Delegates to ArrayUtil which is MRJAR-optimized (Java 9+ uses SIMD).
+   */
+  static boolean equals(int len, byte[] a, int aOffset, byte[] b, int bOffset) {
+    return ArrayUtil.equals(len, a, aOffset, b, bOffset);
+  }
+
   static void nonThrowingClose(Closeable stream) {
     try {
       stream.close();
