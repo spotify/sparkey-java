@@ -1,4 +1,4 @@
-#### (next version)
+#### 3.4.0
 * **Performance optimization**: New `readFullyCompare()` method combines reading and comparing bytes
   in a single operation, avoiding temporary buffer allocation and data copying. Provides 11-17%
   improvement in high-concurrency uncompressed workloads and 2-8% improvement in most other scenarios.
