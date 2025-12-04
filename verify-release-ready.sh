@@ -217,8 +217,7 @@ if [ $ERRORS -eq 0 ]; then
     echo -e "${GREEN}✓ ALL CHECKS PASSED${NC}"
     echo
     echo "You're ready to release! Run:"
-    echo "  mvn -B -Psonatype-oss-release release:clean release:prepare -Darguments=\"-DskipTests=true\""
-    echo "  mvn -B -Psonatype-oss-release release:perform -Darguments=\"-DskipTests=true\""
+    echo "  mvn -B -Psonatype-oss-release release:clean release:prepare release:perform -Darguments=\"-DskipTests=true -Dgpg.skip=false\""
     exit 0
 else
     echo -e "${RED}✗ $ERRORS CHECK(S) FAILED${NC}"
