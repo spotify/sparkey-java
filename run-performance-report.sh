@@ -95,7 +95,7 @@ echo ""
 echo "Running JMH ReaderComparisonBenchmark..."
 echo ""
 echo "Configuration:"
-echo "  - Reader types: SingleThreaded_MMap_JDK8 (1 thread only), Pooled_MMap_JDK8 (all thread counts)"
+echo "  - Reader types: All available (JDK8 MMap, Java 22 MemorySegment - detected automatically)"
 echo "  - Compression: NONE (uncompressed), SNAPPY"
 echo "  - Value sizes: 0 (small ~6 bytes), 50 (large ~56 bytes)"
 echo "  - Entries: 100,000"
@@ -109,10 +109,10 @@ mkdir -p benchmark-results
 
 OUTPUT_FILE="benchmark-results/performance-report-$(date +%Y%m%d-%H%M%S).txt"
 
-# Test both single-threaded and pooled readers
-# Single-threaded reader will automatically skip multithreaded benchmarks (validation in setup)
-# Java 22+ MemorySegment readers are in a separate branch
-JMH_PARAMS="-p readerType=SINGLE_THREADED_MMAP_JDK8,POOLED_MMAP_JDK8"
+# Test all available reader types (defined in @Param annotation)
+# Readers that don't support multithreading will skip multithreaded benchmarks (validation in setup)
+# Readers not available on current JVM will be skipped automatically
+JMH_PARAMS=""
 echo ""
 
 java -cp "$CP" \

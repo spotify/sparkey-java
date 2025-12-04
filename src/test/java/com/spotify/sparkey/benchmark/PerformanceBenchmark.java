@@ -16,7 +16,7 @@
 package com.spotify.sparkey.benchmark;
 
 import com.spotify.sparkey.*;
-import com.spotify.sparkey.extra.PooledSparkeyReader;
+import com.spotify.sparkey.system.ReaderType;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,7 +28,8 @@ import java.util.Random;
 
 /**
  * Standalone performance benchmark for Sparkey readers.
- * Compares different reader implementations on both uncompressed and compressed data.
+ * Automatically tests all available reader implementations on both uncompressed and compressed data.
+ * Reader implementations are discovered via ReaderType enum.
  */
 public class PerformanceBenchmark {
 
@@ -53,6 +54,12 @@ public class PerformanceBenchmark {
     System.out.println("  Entries: " + NUM_ENTRIES);
     System.out.println("  Warmup iterations: " + WARMUP_ITERATIONS);
     System.out.println("  Benchmark iterations: " + BENCHMARK_ITERATIONS);
+    System.out.println("  Java version: " + System.getProperty("java.version"));
+    System.out.println();
+    System.out.println("Available reader implementations:");
+    for (ReaderType type : ReaderType.getAvailable()) {
+      System.out.println("  - " + type);
+    }
     System.out.println();
 
     // Create test files
@@ -67,16 +74,12 @@ public class PerformanceBenchmark {
 
     List<BenchmarkResult> uncompressedResults = new ArrayList<>();
 
-    // Benchmark SingleThreadedSparkeyReader
-    try (SparkeyReader reader = Sparkey.openSingleThreadedReader(uncompressedIndex)) {
-      double ns = benchmarkReader(reader, "SingleThreadedSparkeyReader");
-      uncompressedResults.add(new BenchmarkResult("SingleThreadedSparkeyReader", ns));
-    }
-
-    // Benchmark PooledSparkeyReader
-    try (SparkeyReader reader = PooledSparkeyReader.open(uncompressedIndex)) {
-      double ns = benchmarkReader(reader, "PooledSparkeyReader");
-      uncompressedResults.add(new BenchmarkResult("PooledSparkeyReader", ns));
+    // Benchmark all available readers that support uncompressed
+    for (ReaderType readerType : ReaderType.getAvailableFor(CompressionType.NONE)) {
+      try (SparkeyReader reader = readerType.open(uncompressedIndex)) {
+        double ns = benchmarkReader(reader, readerType.toString());
+        uncompressedResults.add(new BenchmarkResult(readerType.toString(), ns));
+      }
     }
 
     System.out.println();
@@ -87,16 +90,12 @@ public class PerformanceBenchmark {
 
     List<BenchmarkResult> compressedResults = new ArrayList<>();
 
-    // Benchmark SingleThreadedSparkeyReader
-    try (SparkeyReader reader = Sparkey.openSingleThreadedReader(snappyIndex)) {
-      double ns = benchmarkReader(reader, "SingleThreadedSparkeyReader");
-      compressedResults.add(new BenchmarkResult("SingleThreadedSparkeyReader", ns));
-    }
-
-    // Benchmark PooledSparkeyReader
-    try (SparkeyReader reader = PooledSparkeyReader.open(snappyIndex)) {
-      double ns = benchmarkReader(reader, "PooledSparkeyReader");
-      compressedResults.add(new BenchmarkResult("PooledSparkeyReader", ns));
+    // Benchmark all available readers that support Snappy compression
+    for (ReaderType readerType : ReaderType.getAvailableFor(CompressionType.SNAPPY)) {
+      try (SparkeyReader reader = readerType.open(snappyIndex)) {
+        double ns = benchmarkReader(reader, readerType.toString());
+        compressedResults.add(new BenchmarkResult(readerType.toString(), ns));
+      }
     }
 
     // Print summary

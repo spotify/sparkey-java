@@ -260,7 +260,7 @@ final class Util {
   }
 
   /**
-   * Compare byte arrays with offsets.
+   * Compare byte array ranges.
    * Delegates to ArrayUtil which is MRJAR-optimized (Java 9+ uses SIMD).
    */
   static boolean equals(int len, byte[] a, int aOffset, byte[] b, int bOffset) {

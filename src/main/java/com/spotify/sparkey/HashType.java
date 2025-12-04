@@ -26,6 +26,11 @@ public enum HashType {
     }
 
     @Override
+    long readHash(RandomAccessDataStateless data, long pos) throws IOException {
+      return data.readLittleEndianLong(pos);
+    }
+
+    @Override
     void writeHash(long hash, ReadWriteData data) throws IOException {
       data.writeLittleEndianLong(hash);
     }
@@ -44,6 +49,11 @@ public enum HashType {
     @Override
     long readHash(RandomAccessData data) throws IOException {
       return data.readLittleEndianInt() & INT_MASK;
+    }
+
+    @Override
+    long readHash(RandomAccessDataStateless data, long pos) throws IOException {
+      return data.readLittleEndianInt(pos) & INT_MASK;
     }
 
     @Override
@@ -72,6 +82,7 @@ public enum HashType {
 
 
   abstract long readHash(RandomAccessData data) throws IOException;
+  abstract long readHash(RandomAccessDataStateless data, long pos) throws IOException;
 
   abstract void writeHash(long hash, ReadWriteData data) throws IOException;
   abstract void writeHash(long hash, DataOutputStream data) throws IOException;

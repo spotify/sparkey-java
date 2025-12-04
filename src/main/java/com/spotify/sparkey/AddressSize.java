@@ -19,10 +19,15 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 enum AddressSize {
-  LONG() {
+  LONG(8) {
     @Override
     long readAddress(RandomAccessData data) throws IOException {
       return data.readLittleEndianLong();
+    }
+
+    @Override
+    long readAddress(RandomAccessDataStateless data, long pos) throws IOException {
+      return data.readLittleEndianLong(pos);
     }
 
     @Override
@@ -35,10 +40,15 @@ enum AddressSize {
       data.writeLong(address);
     }
   },
-  INT() {
+  INT(4) {
     @Override
     long readAddress(RandomAccessData data) throws IOException {
       return data.readLittleEndianInt() & INT_MASK;
+    }
+
+    @Override
+    long readAddress(RandomAccessDataStateless data, long pos) throws IOException {
+      return data.readLittleEndianInt(pos) & INT_MASK;
     }
 
     @Override
@@ -53,9 +63,19 @@ enum AddressSize {
   };
 
   private static final long INT_MASK = (1L << 32) - 1;
+  private final int size;
+
+  AddressSize(int size) {
+    this.size = size;
+  }
 
   abstract long readAddress(RandomAccessData data) throws IOException;
+  abstract long readAddress(RandomAccessDataStateless data, long pos) throws IOException;
 
   abstract void writeAddress(long address, ReadWriteData data) throws IOException;
   abstract void writeAddress(long address, DataOutputStream data) throws IOException;
+
+  public int size() {
+    return size;
+  }
 }
