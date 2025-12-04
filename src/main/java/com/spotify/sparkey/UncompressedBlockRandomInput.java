@@ -45,6 +45,11 @@ class UncompressedBlockRandomInput implements BlockRandomInput {
   }
 
   @Override
+  public boolean readFullyCompare(int length, byte[] key) throws IOException {
+    return data.readFullyCompare(length, key);
+  }
+
+  @Override
   public void skipBytes(long amount) throws IOException {
     data.skipBytes(amount);
   }

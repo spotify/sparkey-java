@@ -417,8 +417,8 @@ final class IndexHash {
         keyLen2--;
         if (keyLen == keyLen2) {
           int valueLen2 = Util.readUnsignedVLQInt(logData);
-          logData.readFully(keyBuf, 0, keyLen2);
-          if (Util.equals(keyLen, key, keyBuf)) {
+          if (logData.readFullyCompare(keyLen, key)) {
+            // readFullyCompare already advanced position past the key
             entry.keyLen = keyLen2;
             entry.valueLen = valueLen2;
             stream.remaining = valueLen2;
@@ -485,8 +485,8 @@ final class IndexHash {
         keyLen2--;
         if (keyLen == keyLen2) {
           int valueLen2 = Util.readUnsignedVLQInt(logData);
-          logData.readFully(keyBuf, 0, keyLen2);
-          if (Util.equals(keyLen, key, keyBuf)) {
+          if (logData.readFullyCompare(keyLen, key)) {
+            // readFullyCompare already advanced position past the key
 
             // TODO: possibly optimize this to read and write stuff to move in chunks instead of one by one, to decrease number of seeks.
             while (true) {
@@ -614,8 +614,8 @@ final class IndexHash {
         }
         keyLen2--;
         if (keyLen == keyLen2) {
-          logData.readFully(keyBuf, 0, keyLen2);
-          if (Util.equals(keyLen, key, keyBuf)) {
+          if (logData.readFullyCompare(keyLen, key)) {
+            // readFullyCompare already advanced position past the key
             indexData.seek(pos);
             hashData.writeHash(hash, indexData);
             addressData.writeAddress(address, indexData);

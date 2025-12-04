@@ -183,6 +183,11 @@ public class UtilTest {
     public long getLoadedBytes() {
       return data.length;
     }
+
+    @Override
+    public boolean readFullyCompare(int length, byte[] key) {
+      throw new UnsupportedOperationException();
+    }
   }
 
   @Test

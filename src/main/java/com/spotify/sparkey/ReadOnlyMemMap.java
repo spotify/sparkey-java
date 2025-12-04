@@ -209,6 +209,46 @@ final class ReadOnlyMemMap implements RandomAccessData {
     }
   }
 
+  public boolean readFullyCompare(int length, byte[] key) throws IOException {
+    MappedByteBuffer curChunk = getCurChunk();
+    int remaining = curChunk.remaining();
+    if (remaining >= length) {
+      // Fast path: all bytes are in current chunk
+      int pos = curChunk.position();
+      for (int i = 0; i < length; i++) {
+        if (curChunk.get(pos + i) != key[i]) {
+          // Still advance position even on mismatch (matches readFully semantics)
+          curChunk.position(pos + length);
+          return false;
+        }
+      }
+      curChunk.position(pos + length);
+      return true;
+    } else {
+      // Slow path: comparison spans chunk boundary
+      int keyOffset = 0;
+      while (keyOffset < length) {
+        curChunk = getCurChunk();
+        int available = Math.min(curChunk.remaining(), length - keyOffset);
+        int pos = curChunk.position();
+        for (int i = 0; i < available; i++) {
+          if (curChunk.get(pos + i) != key[keyOffset + i]) {
+            // Still advance position even on mismatch
+            curChunk.position(pos + available);
+            skipBytes(length - keyOffset - available);
+            return false;
+          }
+        }
+        curChunk.position(pos + available);
+        keyOffset += available;
+        if (keyOffset < length) {
+          next();
+        }
+      }
+      return true;
+    }
+  }
+
   public void skipBytes(long amount) throws IOException {
     MappedByteBuffer curChunk = getCurChunk();
     int remaining = curChunk.remaining();

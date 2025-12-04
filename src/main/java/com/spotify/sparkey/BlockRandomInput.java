@@ -34,4 +34,21 @@ interface BlockRandomInput {
   void closeDuplicate();
 
   long getLoadedBytes();
+
+  /**
+   * Compare bytes at current position with the provided byte array, advancing position by length bytes.
+   *
+   * This method always advances the current position by {@code length} bytes, regardless of whether
+   * the comparison succeeds or fails. This matches the semantics of {@link #readFully(byte[], int, int)}.
+   *
+   * This is more efficient than calling {@code readFully()} followed by {@code Arrays.equals()}, as it:
+   * - Avoids allocating a temporary buffer
+   * - Avoids copying data from memory-mapped storage
+   * - Uses vectorized comparison (SIMD) on supporting implementations
+   *
+   * @param length number of bytes to read and compare
+   * @param key byte array to compare against (only first {@code length} bytes are compared)
+   * @return true if the bytes at current position match the first {@code length} bytes of {@code key}
+   */
+  boolean readFullyCompare(int length, byte[] key) throws IOException;
 }

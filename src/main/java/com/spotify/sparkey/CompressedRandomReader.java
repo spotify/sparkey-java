@@ -74,6 +74,44 @@ final class CompressedRandomReader implements BlockRandomInput {
   }
 
   @Override
+  public boolean readFullyCompare(int length, byte[] key) throws IOException {
+    int remaining = blockSize - bufPos;
+    if (remaining >= length) {
+      // Fast path: all bytes are in current buffer
+      for (int i = 0; i < length; i++) {
+        if (uncompressedBuf[bufPos + i] != key[i]) {
+          bufPos += length;  // Always advance position (matches readFully semantics)
+          return false;
+        }
+      }
+      bufPos += length;
+      return true;
+    } else {
+      // Slow path: comparison spans multiple blocks - need to fetch
+      int offset = 0;
+      while (offset < length) {
+        if (bufPos >= blockSize) {
+          fetchBlock();
+        }
+        int available = Math.min(blockSize - bufPos, length - offset);
+        for (int i = 0; i < available; i++) {
+          if (uncompressedBuf[bufPos + i] != key[offset + i]) {
+            // Continue advancing even on mismatch (matches readFully semantics)
+            bufPos += available;
+            offset += available;
+            // Skip remaining bytes to fully advance position
+            skipBytes(length - offset);
+            return false;
+          }
+        }
+        bufPos += available;
+        offset += available;
+      }
+      return true;
+    }
+  }
+
+  @Override
   public void close() {
     data.close();
   }
