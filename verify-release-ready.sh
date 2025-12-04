@@ -138,14 +138,14 @@ else
 fi
 echo
 
-# 5. Test Javadoc generation
-echo "5. Testing Javadoc generation..."
-if mvn javadoc:javadoc -q 2>&1 | grep -i "error\|BUILD FAILURE" > /dev/null; then
-    echo -e "${RED}✗ FAIL: Javadoc generation failed${NC}"
-    echo "  Run: mvn javadoc:javadoc"
+# 5. Test Javadoc generation (with release profile)
+echo "5. Testing Javadoc generation (with release profile)..."
+if mvn -Psonatype-oss-release javadoc:jar -q 2>&1 | grep -i "error\|BUILD FAILURE" > /dev/null; then
+    echo -e "${RED}✗ FAIL: Javadoc generation failed with release profile${NC}"
+    echo "  Run: mvn -Psonatype-oss-release javadoc:jar"
     ERRORS=$((ERRORS + 1))
 else
-    echo -e "${GREEN}✓ PASS: Javadoc generates without errors${NC}"
+    echo -e "${GREEN}✓ PASS: Javadoc generates without errors (release profile)${NC}"
 fi
 echo
 
@@ -216,7 +216,12 @@ echo "=========================================="
 if [ $ERRORS -eq 0 ]; then
     echo -e "${GREEN}✓ ALL CHECKS PASSED${NC}"
     echo
-    echo "You're ready to release! Run:"
+    echo "You're ready to release!"
+    echo
+    echo "To test the release process (dry run - no commits/tags/pushes):"
+    echo "  mvn -B -Psonatype-oss-release release:prepare -DdryRun=true -Darguments=\"-DskipTests=true -Dgpg.skip=false\""
+    echo
+    echo "To perform the actual release:"
     echo "  mvn -B -Psonatype-oss-release release:clean release:prepare release:perform -Darguments=\"-DskipTests=true -Dgpg.skip=false\""
     exit 0
 else
