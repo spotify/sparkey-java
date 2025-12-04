@@ -91,22 +91,50 @@ else
 fi
 echo
 
-# 4. Check Maven settings
-echo "4. Checking Maven settings..."
-if [ ! -f ~/.m2/settings.xml ]; then
-    echo -e "${RED}✗ FAIL: ~/.m2/settings.xml not found${NC}"
-    ERRORS=$((ERRORS + 1))
-elif [ ! -L ~/.m2/settings.xml ]; then
-    echo -e "${YELLOW}⚠ WARNING: ~/.m2/settings.xml is not a symlink${NC}"
-    echo "  For release, should point to settings-spfoss.xml"
-else
-    SETTINGS_TARGET=$(readlink ~/.m2/settings.xml)
-    if [[ "$SETTINGS_TARGET" == *"spfoss"* ]]; then
-        echo -e "${GREEN}✓ PASS: Maven settings point to spfoss configuration${NC}"
+# 3a. Check master is up to date with origin
+echo "3a. Checking master is up to date with origin..."
+git fetch origin -q 2>/dev/null
+LOCAL_COMMIT=$(git rev-parse master)
+REMOTE_COMMIT=$(git rev-parse origin/master 2>/dev/null || git rev-parse origin/HEAD 2>/dev/null)
+
+if [ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]; then
+    # Check if we're ahead or behind
+    if git merge-base --is-ancestor origin/master master 2>/dev/null || git merge-base --is-ancestor origin/HEAD master 2>/dev/null; then
+        echo -e "${YELLOW}⚠ WARNING: Local master is ahead of origin${NC}"
+        echo "  You may have unpushed commits"
+        echo "  Local: $LOCAL_COMMIT"
+        echo "  Remote: $REMOTE_COMMIT"
     else
-        echo -e "${YELLOW}⚠ WARNING: Maven settings point to: $SETTINGS_TARGET${NC}"
-        echo "  For release, should point to settings-spfoss.xml"
+        echo -e "${RED}✗ FAIL: Local master is out of sync with origin${NC}"
+        echo "  Run: git pull --rebase origin master"
+        echo "  Local: $LOCAL_COMMIT"
+        echo "  Remote: $REMOTE_COMMIT"
+        ERRORS=$((ERRORS + 1))
     fi
+else
+    echo -e "${GREEN}✓ PASS: Master is up to date with origin${NC}"
+fi
+echo
+
+# 4. Check Maven effective settings for FOSS deployment servers
+echo "4. Checking Maven configuration for FOSS deployment..."
+EFFECTIVE_SETTINGS=$(mvn help:effective-settings 2>&1)
+
+# Check for required servers for Sonatype OSSRH deployment
+MISSING_SERVERS=""
+for SERVER_ID in "ossrh" "sonatype-nexus-snapshots" "sonatype-nexus-staging"; do
+    if ! echo "$EFFECTIVE_SETTINGS" | grep -q "<id>$SERVER_ID</id>"; then
+        MISSING_SERVERS="$MISSING_SERVERS $SERVER_ID"
+    fi
+done
+
+if [ -n "$MISSING_SERVERS" ]; then
+    echo -e "${RED}✗ FAIL: Maven settings missing required servers:$MISSING_SERVERS${NC}"
+    echo "  These servers are required for FOSS deployment to Maven Central"
+    echo "  Configure your settings file or use .mvn/maven.config to point to FOSS settings"
+    ERRORS=$((ERRORS + 1))
+else
+    echo -e "${GREEN}✓ PASS: Maven configured with FOSS deployment servers (ossrh, sonatype-nexus-*)${NC}"
 fi
 echo
 
