@@ -2,6 +2,9 @@
 * **Performance optimization**: New `readFullyCompare()` method combines reading and comparing bytes
   in a single operation, avoiding temporary buffer allocation and data copying. Provides 11-17%
   improvement in high-concurrency uncompressed workloads and 2-8% improvement in most other scenarios.
+* **SIMD optimization**: Byte array comparisons now use vectorized instructions (AVX2/AVX-512) on
+  Java 9+ via Multi-Release JAR. Provides 4-13% improvement in single-threaded and low-concurrency
+  scenarios (up to 8 threads). Java 8 continues to use the standard byte-by-byte comparison.
 * **PooledSparkeyReader improvements**: Optimized with lock-free atomic operations for better
   performance under high contention.
 * Fix thread-safety bug in PooledSparkeyReader.getAsEntry() where the entry object could be shared
