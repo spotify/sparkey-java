@@ -113,6 +113,31 @@ public class UtilTest {
   }
 
   @Test
+  public void testEqualsWithOffset() throws Exception {
+    byte[] a = "xyzapa123".getBytes();
+    byte[] b = "abcapa789".getBytes();
+
+    // Test matching substrings with offset
+    assertTrue(Util.equals(3, a, 3, b, 3));  // "apa" == "apa"
+
+    // Test non-matching substrings
+    assertFalse(Util.equals(3, a, 0, b, 0));  // "xyz" != "abc"
+    assertFalse(Util.equals(3, a, 3, b, 0));  // "apa" != "abc"
+
+    // Test zero length (should always match)
+    assertTrue(Util.equals(0, a, 0, b, 0));
+
+    // Test full arrays from offset 0
+    byte[] c = "test".getBytes();
+    byte[] d = "test".getBytes();
+    assertTrue(Util.equals(4, c, 0, d, 0));
+
+    // Test single byte
+    assertTrue(Util.equals(1, a, 3, b, 3));  // 'a' == 'a'
+    assertFalse(Util.equals(1, a, 0, b, 0));  // 'x' != 'a'
+  }
+
+  @Test
   public void testReadFully() throws Exception {
     byte[] bytes = "testgurka".getBytes();
     byte[] buf = new byte[bytes.length];
@@ -165,6 +190,11 @@ public class UtilTest {
     }
 
     @Override
+    public boolean readFullyCompare(int length, byte[] key) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void skipBytes(long amount) {
       throw new UnsupportedOperationException();
     }
@@ -182,11 +212,6 @@ public class UtilTest {
     @Override
     public long getLoadedBytes() {
       return data.length;
-    }
-
-    @Override
-    public boolean readFullyCompare(int length, byte[] key) {
-      throw new UnsupportedOperationException();
     }
   }
 

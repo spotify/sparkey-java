@@ -1,3 +1,40 @@
+#### Next Release
+* **Java 22+ optimizations**: Added MemorySegment-based implementations for zero-copy I/O and values
+  larger than 2GB. On Java 22+, `getValueAsStream()` now returns a zero-copy stream that reads
+  directly from memory-mapped files. Performance improvements for uncompressed files:
+  - Single-threaded: ~5% faster (469 ns/op vs 493 ns/op on Java 8)
+  - 8 threads: **38% faster** (400 ns/op vs 646 ns/op)
+  - 16 threads: **10% faster** (937 ns/op vs 1,045 ns/op)
+  - 32 threads: **15% faster** (1,919 ns/op vs 2,245 ns/op)
+
+  Compressed files continue to work on all Java versions with no performance regression.
+  Automatically enabled when running on Java 22+; older Java versions use existing implementations.
+
+* **Architecture simplification**: Separated read-only optimized uncompressed reader
+  (`UncompressedSparkeyReaderJ22`) from general-purpose reader (`SingleThreadedSparkeyReaderJ22`),
+  eliminating dual-mode complexity while maintaining performance.
+
+* **>2GB value support**: Values larger than 2GB are now supported on Java 22+ via `getValueAsStream()`.
+  The `getValue()` method (which returns `byte[]`) throws `IllegalStateException` for values exceeding
+  the byte array limit with guidance to use streaming instead.
+
+* **Zero-allocation empty streams**: Added `EmptyInputStream` singleton for DELETE entries and empty
+  values, eliminating unnecessary allocations during log iteration.
+
+* **VLQ optimization**: Inlined variable-length quantity (VLQ) reads in Java 22+ uncompressed hash
+  lookups, eliminating double-parsing overhead and Entry object allocation.
+
+* **Type safety improvements**: Added covariant return types to `duplicate()` methods and changed
+  `asSlice()` parameters from `int` to `long`, eliminating casts and better matching the
+  MemorySegment API.
+
+* **Performance baseline** (Intel Xeon @ 2.2GHz, 100K entries, Java 25):
+  - Uncompressed single-threaded: 469 ns/op
+  - Uncompressed 8 threads: 400 ns/op
+  - Uncompressed 16 threads: 937 ns/op
+  - Compressed SNAPPY 8 threads: 3,367 ns/op (8.4x slower than uncompressed)
+  - Compressed ZSTD 8 threads: 9,987 ns/op (25x slower than uncompressed)
+
 #### 3.4.0
 * **Performance optimization**: New `readFullyCompare()` method combines reading and comparing bytes
   in a single operation, avoiding temporary buffer allocation and data copying. Provides 11-17%
