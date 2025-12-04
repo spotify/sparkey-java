@@ -19,6 +19,8 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- GPG signing disabled by default, enabled by sonatype-oss-release profile -->
+    <gpg.skip>true</gpg.skip>
   </properties>
 
   <scm>
@@ -79,8 +81,8 @@
         <artifactId>maven-gpg-plugin</artifactId>
         <version>1.5</version>
         <configuration>
-          <!-- Skip GPG signing by default. Enable with -Dgpg.skip=false for releases -->
-          <skip>true</skip>
+          <!-- Skip GPG signing by default. Enabled by sonatype-oss-release profile -->
+          <skip>${gpg.skip}</skip>
         </configuration>
         <executions>
           <execution>
@@ -304,5 +306,15 @@
           <scope>test</scope>
       </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>sonatype-oss-release</id>
+      <properties>
+        <!-- Enable GPG signing for releases -->
+        <gpg.skip>false</gpg.skip>
+      </properties>
+    </profile>
+  </profiles>
 </project>
 

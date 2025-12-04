@@ -219,10 +219,10 @@ if [ $ERRORS -eq 0 ]; then
     echo "You're ready to release!"
     echo
     echo "To test the release process (dry run - no commits/tags/pushes):"
-    echo "  mvn -B -Psonatype-oss-release release:prepare -DdryRun=true -Darguments=\"-DskipTests=true -Dgpg.skip=false\""
+    echo "  mvn -B -Psonatype-oss-release release:prepare -DdryRun=true -Darguments=\"-DskipTests=true\""
     echo
     echo "To perform the actual release:"
-    echo "  mvn -B -Psonatype-oss-release release:clean release:prepare release:perform -Darguments=\"-DskipTests=true -Dgpg.skip=false\""
+    echo "  mvn -B -Psonatype-oss-release release:clean release:prepare release:perform -Darguments=\"-DskipTests=true\""
     exit 0
 else
     echo -e "${RED}✗ $ERRORS CHECK(S) FAILED${NC}"
