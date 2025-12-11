@@ -266,7 +266,7 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
 
     @Override
     public int read() throws IOException {
-      if (remaining >= 0) {
+      if (remaining > 0) {
         remaining--;
         return stream.read();
       }
@@ -319,13 +319,9 @@ public final class SparkeyLogIterator implements Iterable<SparkeyReader.Entry> {
     }
 
     @Override
-    public void close() {
-      try {
-        stream.close();
-        super.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+    public void close() throws IOException {
+      // Don't close the underlying stream - it's owned by the iterator
+      super.close();
     }
 
     @Override
