@@ -95,7 +95,7 @@ public final class Sparkey {
    * @return a new pooled reader
    */
   public static SparkeyReader open(File file) throws IOException {
-    return PooledSparkeyReader.open(file);
+    return SparkeyImplSelector.open(file);
   }
 
   /**
@@ -109,7 +109,7 @@ public final class Sparkey {
    */
   @Deprecated
   public static SparkeyReader openThreadLocalReader(File file) throws IOException {
-    return PooledSparkeyReader.open(file);
+    return SparkeyImplSelector.open(file);
   }
 
   /**
@@ -121,7 +121,7 @@ public final class Sparkey {
    * @return a new reader,
    */
   public static SparkeyReader openSingleThreadedReader(File file) throws IOException {
-    return SingleThreadedSparkeyReader.open(file);
+    return SparkeyImplSelector.openSingleThreaded(file);
   }
 
   /**
@@ -139,7 +139,7 @@ public final class Sparkey {
    * @see PooledSparkeyReader for more details on pool sizing and performance
    */
   public static SparkeyReader openPooledReader(File file) throws IOException {
-    return PooledSparkeyReader.open(file);
+    return SparkeyImplSelector.openPooled(file);
   }
 
   /**
@@ -159,7 +159,7 @@ public final class Sparkey {
    * @see PooledSparkeyReader for more details on pool sizing and performance
    */
   public static SparkeyReader openPooledReader(File file, int poolSize) throws IOException {
-    return PooledSparkeyReader.open(file, poolSize);
+    return SparkeyImplSelector.openPooled(file, poolSize);
   }
 
   /**

@@ -96,19 +96,49 @@
       </plugin>
 
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>add-java22-test-source</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/main/java22</source>
+                <source>src/main/java9</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.13.0</version>
         <executions>
+          <!-- STEP 1: Compile Java 8 base implementation in 'compile' phase -->
           <execution>
             <id>default-compile</id>
             <configuration>
               <release>8</release>
             </configuration>
           </execution>
+          <!-- STEP 2: Compile tests with Java 25 (includes Java 22/9 sources via build-helper) -->
           <execution>
-            <id>compile-java9</id>
-            <phase>compile</phase>
+            <id>default-testCompile</id>
+            <configuration>
+              <release>25</release>
+            </configuration>
+          </execution>
+          <!-- STEP 3: Compile Java 9 optimized version in 'process-test-classes' phase (before tests run) -->
+          <execution>
+            <id>java9-compile</id>
+            <phase>process-test-classes</phase>
             <goals>
               <goal>compile</goal>
             </goals>
@@ -120,10 +150,19 @@
               <multiReleaseOutput>true</multiReleaseOutput>
             </configuration>
           </execution>
+          <!-- STEP 4: Compile Java 22 optimized version in 'process-test-classes' phase (before tests run) -->
           <execution>
-            <id>default-testCompile</id>
+            <id>java22-compile</id>
+            <phase>process-test-classes</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
             <configuration>
-              <release>25</release>
+              <release>22</release>
+              <compileSourceRoots>
+                <compileSourceRoot>${project.basedir}/src/main/java22</compileSourceRoot>
+              </compileSourceRoots>
+              <multiReleaseOutput>true</multiReleaseOutput>
             </configuration>
           </execution>
         </executions>
@@ -166,20 +205,6 @@
         <version>3.5.0</version>
         <executions>
           <execution>
-            <id>enforce-bytecode-version</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <enforceBytecodeVersion>
-                  <maxJdkVersion>8</maxJdkVersion>
-                </enforceBytecodeVersion>
-              </rules>
-              <fail>true</fail>
-            </configuration>
-          </execution>
-          <execution>
             <id>enforce-java</id>
             <goals>
               <goal>enforce</goal>
@@ -191,6 +216,24 @@
                   <version>[25,)</version>
                 </requireJavaVersion>
               </rules>
+            </configuration>
+          </execution>
+          <!-- STEP 2: Check bytecode in 'process-classes' phase (after Java 8 compile, before Java 22 compile) -->
+          <execution>
+            <id>enforce-bytecode-version</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <phase>process-classes</phase>
+            <configuration>
+              <rules>
+                <enforceBytecodeVersion>
+                  <maxJdkVersion>8</maxJdkVersion>
+                  <!-- No ignoreClasses needed! Java 22 classes don't exist yet at this phase. -->
+                  <!-- This checks Java 8 base classes + all dependencies -->
+                </enforceBytecodeVersion>
+              </rules>
+              <fail>true</fail>
             </configuration>
           </execution>
         </executions>

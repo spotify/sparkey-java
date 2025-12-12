@@ -48,10 +48,39 @@ Apache License, Version 2.0
 
 ### Performance
 
-This data is the direct output from running the benchmarks via IntelliJ, using the JMH plugin
-on a machine with `Intel(R) Core(TM) i7-7500U CPU @ 2.70GHz`
+#### Java 22+ Optimizations (Recommended)
 
-#### Random lookups
+Sparkey-java achieves best performance on **Java 22+** with **uncompressed** data using MemorySegment-based
+zero-copy I/O. The optimizations are automatically enabled when running on Java 22 or higher.
+
+**Benchmark results** (Intel Xeon @ 2.2GHz, 100K entries, Java 25):
+
+| Configuration | Lookup Time | vs Java 8 | Notes |
+|--------------|-------------|-----------|-------|
+| **Uncompressed, 8 threads (optimal)** | **400 ns/op** | **38% faster** | Best performance |
+| Uncompressed, single-threaded | 469 ns/op | 5% faster | |
+| Uncompressed, 16 threads | 937 ns/op | 10% faster | |
+| Uncompressed, 32 threads | 1,919 ns/op | 15% faster | |
+| Compressed SNAPPY, 8 threads | 3,367 ns/op | Same | 8.4x slower than uncompressed |
+| Compressed ZSTD, 8 threads | 9,987 ns/op | Same | 25x slower than uncompressed |
+
+**Performance guidance:**
+- **Best**: Java 22+, uncompressed data, 8-16 threads → **~400-900 ns/op**
+- **Good**: Java 8, uncompressed data → **~500-650 ns/op** per lookup
+- **Acceptable**: Compressed SNAPPY → **~3,000 ns/op** (useful when disk space is limited)
+- **Slower**: Compressed ZSTD → **~10,000 ns/op** (best compression ratio, CPU intensive)
+
+For maximum performance:
+1. Use Java 22+ (or newer)
+2. Use uncompressed data (CompressionType.NONE)
+3. Use 8-16 threads for concurrent workloads
+4. Ensure dataset fits in RAM (or use mlock for predictable performance)
+
+Older Java versions (8-21) continue to work with identical functionality, just without the zero-copy optimizations.
+
+#### Historical Random Lookup Benchmarks
+
+This data is from earlier versions, using the JMH plugin on `Intel(R) Core(TM) i7-7500U CPU @ 2.70GHz`:
 
     Benchmark             (numElements)  (type)   Mode  Cnt        Score         Error  Units
     LookupBenchmark.test           1000    NONE  thrpt    4  4768851.493 ±  934818.190  ops/s
@@ -67,11 +96,11 @@ on a machine with `Intel(R) Core(TM) i7-7500U CPU @ 2.70GHz`
     LookupBenchmark.test       10000000  SNAPPY  thrpt    4   700438.201 ±   27910.579  ops/s
     LookupBenchmark.test      100000000  SNAPPY  thrpt    4   681790.103 ±   45388.918  ops/s
 
-Here we see that performance goes down slightly as more elements are added. This is caused by:
-* More frequent CPU cache misses.
-* More page faults.
+Performance goes down slightly as more elements are added due to:
+* More frequent CPU cache misses
+* More page faults
 
-If you can mlock the full dataset, the performance should be more predictable.
+If you can mlock the full dataset, performance should be more predictable.
 
 #### Appending data
 

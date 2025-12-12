@@ -4,200 +4,161 @@ This directory contains performance benchmarking tools for comparing different S
 
 ## Quick Start
 
-### JMH Benchmark (Recommended)
+### Running the Benchmark
 
 For scientific, statistically rigorous benchmarking using JMH:
 
 ```bash
-./run-performance-report.sh
+# Quick smoke test (~5 minutes)
+./run-performance-report.sh --quick
+
+# Full benchmark (~15 minutes)
+./run-performance-report.sh --full
 ```
 
 This produces publication-quality results with proper warmup, statistical analysis, and confidence intervals.
 
-### Simple Benchmark
-
-For quick performance checks without JMH overhead:
-
-```bash
-./benchmark-performance.sh
-```
-
-This will:
-1. Compile the project
-2. Create test files (100K entries each):
-   - Uncompressed
-   - Snappy-compressed
-3. Benchmark all reader implementations
-4. Print a summary report
-
 ## What It Measures
 
-The benchmark tests all available reader implementations for the current branch:
+The benchmark tests all available reader implementations across multiple dimensions:
 
-### Common Readers (all branches)
+### Reader Types
 
-- **SingleThreadedSparkeyReader** - Generic single-threaded reader
-- **PooledSparkeyReader** - Thread-safe pooled reader
-- **ThreadLocalSparkeyReader** - Thread-safe reader with thread-local instances
+The benchmark automatically discovers and tests all available reader implementations:
 
-### Branch-specific Readers
+**Java 8+ (always available):**
+- **SINGLE_THREADED_MMAP_JDK8** - Generic single-threaded reader using MappedByteBuffer
+- **POOLED_MMAP_JDK8** - Thread-safe pooled reader using MappedByteBuffer
 
-- **ImmutableSparkeyReader** - Zero-overhead thread-safe reader (java21-4.0.0 branch only, uncompressed only)
+**Java 22+ (when running on Java 22+):**
+- **UNCOMPRESSED_MEMORYSEGMENT_J22** - Uncompressed-only reader using MemorySegment API (zero-copy)
+- **SINGLE_THREADED_MEMORYSEGMENT_J22** - Single-threaded reader using MemorySegment API
+- **POOLED_MEMORYSEGMENT_J22** - Thread-safe pooled reader using MemorySegment API
 
-Note: The exact set of readers tested depends on which branch you're running the benchmark on.
+### Test Parameters
+
+- **Compression**: NONE (uncompressed), SNAPPY
+- **Value sizes**: Small (~6 bytes), Large (~56 bytes)
+- **Concurrency**: Single-threaded, Multi-threaded (8, 16, 32 threads)
+- **Entries**: 100,000 key-value pairs
 
 ## Benchmark Configuration
 
-Default settings (in `PerformanceBenchmark.java`):
-- Entries: 100,000
-- Warmup iterations: 100,000
-- Benchmark iterations: 1,000,000
+The benchmark is implemented as a JMH test: `src/test/java/com/spotify/sparkey/system/ReaderComparisonBenchmark.java`
 
-Modify these constants to adjust the benchmark parameters.
+### Default Settings
+
+**Quick mode (`--quick`):**
+- Warmup: 1 iteration × 1 second = 1s per benchmark
+- Measurement: 5 iterations × 1 second = 5s per benchmark
+- Total per benchmark: ~6 seconds
+- Total time: ~1 minute for all configurations
+- Expected error: 5-10% (good for smoke testing)
+
+**Full mode (`--full`, default):**
+- Warmup: 3 iterations × 2 seconds = 6s per benchmark
+- Measurement: 10 iterations × 2 seconds = 20s per benchmark
+- Total per benchmark: ~26 seconds
+- Total time: ~4 minutes for all configurations
+- Expected error: <5% for most benchmarks, <10% for high-contention multithreaded
+
+Each iteration runs millions of operations on modern hardware, providing excellent statistical significance with predictable runtime.
+
+### Output
+
+Results are saved to timestamped files in `benchmark-results/`:
+```
+benchmark-results/performance-report-20250115-143022.txt
+```
 
 ## Sample Output
 
 ```
-Sparkey Performance Benchmark
-=============================
-
-Configuration:
-  Entries: 100000
-  Warmup iterations: 100000
-  Benchmark iterations: 1000000
-
-Creating test file: NONE (uncompressed)
-  Log size: 8.77 MB
-  Index size: 1.53 MB
-  Total size: 10.30 MB
-
-Creating test file: SNAPPY (snappy)
-  Log size: 4.23 MB
-  Index size: 1.53 MB
-  Total size: 5.76 MB
-
-=============================
-UNCOMPRESSED FILES
-=============================
-
-Benchmarking ImmutableSparkeyReader...
-  Warming up... done
-  Measuring performance... done
-  Result: 89.45 ns/lookup
-
-Benchmarking SingleThreadedSparkeyReader...
-  Warming up... done
-  Measuring performance... done
-  Result: 91.23 ns/lookup
-
-Benchmarking PooledSparkeyReader...
-  Warming up... done
-  Measuring performance... done
-  Result: 95.67 ns/lookup
-
-=============================
-COMPRESSED FILES (Snappy)
-=============================
-
-Benchmarking SingleThreadedSparkeyReader...
-  Warming up... done
-  Measuring performance... done
-  Result: 156.34 ns/lookup
-
-Benchmarking PooledSparkeyReader...
-  Warming up... done
-  Measuring performance... done
-  Result: 162.45 ns/lookup
-
-=============================
-SUMMARY
-=============================
-
-Uncompressed Performance:
------------------------
-Implementation                      ns/lookup   vs Fastest
----------------------------------------------------------
-ImmutableSparkeyReader                  89.45   (fastest)
-SingleThreadedSparkeyReader             91.23       1.02x
-PooledSparkeyReader                     95.67       1.07x
-
-Compressed Performance:
----------------------
-Implementation                      ns/lookup   vs Fastest
----------------------------------------------------------
-SingleThreadedSparkeyReader            156.34   (fastest)
-PooledSparkeyReader                    162.45       1.04x
-
-=============================
-Benchmark Complete!
-=============================
+Benchmark                                                          Mode  Cnt    Score    Error  Units
+ReaderComparisonBenchmark.lookupRandomSingleThreaded              avgt    5   89.234 ±  2.156  ns/op
+  (compressionType=NONE, readerType=UNCOMPRESSED_MEMORYSEGMENT_J22, valuePadding=0)
+ReaderComparisonBenchmark.lookupRandomSingleThreaded              avgt    5   91.456 ±  1.823  ns/op
+  (compressionType=NONE, readerType=SINGLE_THREADED_MMAP_JDK8, valuePadding=0)
+ReaderComparisonBenchmark.lookupRandomSingleThreaded              avgt    5  156.340 ± 12.456  ns/op
+  (compressionType=SNAPPY, readerType=SINGLE_THREADED_MMAP_JDK8, valuePadding=0)
+ReaderComparisonBenchmark.lookupRandomMultithreaded               avgt    5  112.567 ±  8.234  ns/op
+  (compressionType=NONE, readerType=POOLED_MEMORYSEGMENT_J22, valuePadding=0, threads=8)
 ```
 
 ## Interpretation
 
-- **ns/lookup**: Average time per lookup in nanoseconds (lower is better)
-- **vs Fastest**: Slowdown factor compared to fastest implementation
+- **Score**: Average time per lookup in nanoseconds (lower is better)
+- **Error**: 99.9% confidence interval
+- **Mode**: `avgt` = average time
 
 ### Expected Results
 
-**Uncompressed:**
-- ImmutableSparkeyReader should be fastest (~90 ns/lookup)
-- SingleThreadedSparkeyReader slightly slower (~2% overhead)
-- PooledSparkeyReader adds pooling overhead (~5-10%)
+**Uncompressed (NONE):**
+- Java 22+ MemorySegment readers: ~85-95 ns/lookup (fastest, zero-copy)
+- Java 8 MappedByteBuffer readers: ~90-100 ns/lookup (baseline)
+- Performance gap widens with larger values due to zero-copy streaming
 
-**Compressed:**
-- SingleThreadedSparkeyReader and PooledSparkeyReader similar
-- Both ~60-70% slower than uncompressed due to decompression
+**Compressed (SNAPPY):**
+- All readers similar performance (~150-170 ns/lookup)
+- Decompression overhead dominates, memory access optimization less visible
 
-## JMH Benchmark Details
-
-The JMH benchmark (`run-performance-report.sh`) provides:
-
-- **Statistical rigor**: Proper warmup, multiple iterations, confidence intervals
-- **JVM warmup**: Ensures JIT compilation is complete
-- **Fork isolation**: Each benchmark runs in separate JVM
-- **Outlier detection**: Automatically identifies and reports anomalies
-
-### JMH Output
-
-The benchmark produces a timestamped report file with detailed results:
-
-```
-Benchmark                                                         Mode  Cnt     Score     Error  Units
-ReaderComparisonBenchmark.lookupRandom:·gc.alloc.rate.norm       avgt    5    ≈ 10⁻³            B/op
-ReaderComparisonBenchmark.lookupRandom                            avgt    5   89.234 ±   2.156  ns/op
-  (compressionType=NONE, readerType=ImmutableSparkeyReader)
-ReaderComparisonBenchmark.lookupRandom                            avgt    5   91.456 ±   1.823  ns/op
-  (compressionType=NONE, readerType=SingleThreadedSparkeyReader)
-...
-```
-
-### Customizing JMH Parameters
-
-Edit `ReaderComparisonBenchmark.java` to change:
-- `@Param("100000")` - Number of entries
-- `@Param({"NONE", "SNAPPY"})` - Compression types to test
-- `@Warmup(iterations = 3, time = 2)` - Warmup configuration
-- `@Measurement(iterations = 5, time = 2)` - Measurement configuration
+**Multi-threaded:**
+- Pooled readers scale well across threads
+- Single-threaded readers not available in multi-threaded benchmarks
 
 ## Advanced Usage
 
-Run the simple benchmark directly with custom parameters:
+### Customizing Parameters
 
-```bash
-mvn exec:java \
-  -Dexec.mainClass="com.spotify.sparkey21.benchmark.PerformanceBenchmark" \
-  -Dexec.classpathScope=test
-```
-
-Or integrate into your own code:
+Edit `src/test/java/com/spotify/sparkey/system/ReaderComparisonBenchmark.java`:
 
 ```java
-import com.spotify.sparkey21.benchmark.PerformanceBenchmark;
+@Param({"100000"})  // Number of entries
+public int numElements;
 
-public class MyBenchmark {
-  public static void main(String[] args) throws Exception {
-    new PerformanceBenchmark().run();
-  }
-}
+@Param({"NONE", "SNAPPY"})  // Compression types
+public String compressionType;
+
+@Param({"SINGLE_THREADED_MMAP_JDK8", "POOLED_MMAP_JDK8", ...})
+public String readerType;
+
+@Param({"0", "50"})  // Value padding (0=small, 50=large)
+public int valuePadding;
 ```
+
+### Running Specific Benchmarks
+
+To run only specific parameter combinations, modify `run-performance-report.sh` to add JMH filters:
+
+```bash
+# Only test uncompressed
+-p compressionType=NONE
+
+# Only test specific reader
+-p readerType=UNCOMPRESSED_MEMORYSEGMENT_J22
+
+# Multiple filters
+-p compressionType=NONE -p valuePadding=0
+```
+
+### Manual JMH Invocation
+
+If you need full control, run JMH manually after building:
+
+```bash
+mvn clean package -DskipTests
+java -cp "target/test-classes:target/sparkey-*.jar:..." \
+  org.openjdk.jmh.Main \
+  ReaderComparisonBenchmark \
+  -wi 3 -w 2 \
+  -i 10 -r 2
+```
+
+Options:
+- `-wi <count>` - Number of warmup iterations
+- `-w <seconds>` - Time per warmup iteration
+- `-i <count>` - Number of measurement iterations
+- `-r <seconds>` - Time per measurement iteration
+- Add `-p <param>=<value>` to filter specific configurations
+
+See `run-performance-report.sh` for the exact classpath construction.

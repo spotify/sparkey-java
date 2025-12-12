@@ -136,7 +136,7 @@ final class CompressedRandomReader implements BlockRandomInput {
   }
 
   @Override
-  public BlockRandomInput duplicate() {
+  public CompressedRandomReader duplicate() {
     CompressedRandomReader duplicate = new CompressedRandomReader(compressor, data.duplicate(), maxBlockSize);
     duplicate.bufPos = this.bufPos;
     duplicate.blockSize = this.blockSize;
