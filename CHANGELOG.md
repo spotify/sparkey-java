@@ -1,4 +1,6 @@
 #### Next Release
+
+#### 3.5.0
 * **Java 22+ optimizations**: Added MemorySegment-based implementations for zero-copy I/O and values
   larger than 2GB. On Java 22+, `getValueAsStream()` now returns a zero-copy stream that reads
   directly from memory-mapped files. Performance improvements for uncompressed files:
