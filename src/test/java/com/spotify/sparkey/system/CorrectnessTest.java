@@ -255,4 +255,45 @@ public class CorrectnessTest extends BaseSystemTest {
       writer.close();
     }
   }
+
+  @Test
+  public void testValueStreamCloseDoesNotBreakReader() throws IOException {
+    // Regression test for SafeStream bug: closing a value stream should not close
+    // the underlying BlockRandomInput, which would break all subsequent lookups.
+    //
+    // IMPORTANT: Uses openSingleThreadedReader() instead of open() because:
+    // - open() returns PooledSparkeyReader which creates duplicate readers
+    // - Duplicates share allInstances set with reference counting
+    // - Reference counting masks the bug (allInstances.size > 1 prevents premature close)
+    // - SingleThreadedSparkeyReader has allInstances.size = 1, exposing the bug
+    for (CompressionType compressionType : CompressionType.values()) {
+      // Create test data with multiple entries
+      try (SparkeyWriter writer = Sparkey.createNew(indexFile, compressionType, 64)) {
+        writer.put("key1", "value1");
+        writer.put("key2", "value2");
+        writer.put("key3", "value3");
+        writer.flush();
+        TestSparkeyWriter.writeHashAndCompare(writer);
+      }
+
+      // CRITICAL: Use SingleThreadedSparkeyReader to avoid the pool masking the bug
+      try (SparkeyReader reader = Sparkey.openSingleThreadedReader(indexFile)) {
+        // Get first entry as stream
+        SparkeyReader.Entry entry1 = reader.getAsEntry("key1".getBytes());
+        assertEquals("value1", entry1.getValueAsString());
+
+        // Get the value stream and close it (this should be safe)
+        java.io.InputStream valueStream = entry1.getValueAsStream();
+        valueStream.close();  // This used to break the reader!
+
+        // Verify reader still works for other lookups
+        assertEquals("value2", reader.getAsString("key2"));
+        assertEquals("value3", reader.getAsString("key3"));
+
+        // Verify we can still get entries
+        SparkeyReader.Entry entry2 = reader.getAsEntry("key2".getBytes());
+        assertEquals("value2", entry2.getValueAsString());
+      }
+    }
+  }
 }
