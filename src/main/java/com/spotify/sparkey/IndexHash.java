@@ -749,7 +749,7 @@ final class IndexHash {
 
     @Override
     public int read() throws IOException {
-      if (remaining >= 0) {
+      if (remaining > 0) {
         remaining--;
         return stream.readUnsignedByte();
       }
@@ -796,13 +796,9 @@ final class IndexHash {
     }
 
     @Override
-    public void close() {
-      stream.close();
-      try {
-        super.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+    public void close() throws IOException {
+      // Don't close the underlying stream - it's owned by the reader
+      super.close();
     }
 
     @Override
