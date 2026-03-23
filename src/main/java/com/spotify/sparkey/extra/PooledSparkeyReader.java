@@ -42,7 +42,9 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
  *
  * <p>The implementation hashes thread IDs to select an initial "affinity" slot,
  * providing cache locality benefits when there's no contention. On collision,
- * it falls back to random slot selection.
+ * it falls back to random slot selection. If all CAS attempts fail, the operation
+ * is delegated to a lazily-created overflow pool with 2x capacity, ensuring
+ * forward progress without blocking.
  *
  * <p><strong>Recommended for Java 21+ applications using virtual threads.</strong>
  *
@@ -71,7 +73,8 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
  * All read methods (getAsString, getAsByteArray, getAsEntry) are thread-safe.
  * Uses lock-free atomic operations to acquire exclusive reader access.
  * Starts with thread-affinity slot, falls back to random on collision.
- * No blocking or monitor locks.
+ * The hot path is lock-free; overflow pool creation and close() use
+ * a shared monitor to coordinate safely.
  *
  * <p><strong>Iteration is fully supported and thread-safe.</strong> Each call to
  * {@link #iterator()} creates an isolated duplicate of the index and opens its own
@@ -79,10 +82,13 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
  */
 public class PooledSparkeyReader implements SparkeyReader {
 
+  private static final int CAS_ATTEMPTS = 6;
+
   private final SparkeyReader baseReader;
   private final SparkeyReader[] pool;
   private final int mask;  // For fast modulo: threadId & mask == threadId % poolSize
-  private final AtomicIntegerArray busy;  // Hint for contention avoidance
+  private final AtomicIntegerArray busy;
+  private volatile PooledSparkeyReader overflow;  // lazily created, 2x size
   private volatile boolean closed = false;
 
   protected PooledSparkeyReader(SparkeyReader baseReader, int requestedPoolSize) {
@@ -203,42 +209,53 @@ public class PooledSparkeyReader implements SparkeyReader {
 
   /**
    * Execute an operation on a pooled reader with lock-free slot acquisition.
-   * Uses atomic operations to acquire exclusive access to a reader slot.
-   * Starts with thread-affinity slot for cache locality, then random selection.
+   *
+   * <p>Tries to acquire a slot via CAS: first the thread-affinity slot for cache
+   * locality, then random slots. If all attempts fail (high contention), delegates
+   * to a lazily-created overflow pool with 2x capacity. The overflow pool uses the
+   * same strategy, so capacity grows exponentially until contention resolves.
+   *
+   * <p>This approach never blocks or parks — it always makes progress by expanding
+   * capacity to match actual concurrent demand.
    */
   private <T> T executeOnPooledReader(ReaderOperation<T> operation) throws IOException {
+    // Best-effort closed check — a concurrent close() may race past this point.
+    // This is harmless: the worst case is one stale read attempt on an already-closed
+    // reader, which will fail with an IOException from the underlying reader.
     if (closed) {
       throw new IllegalStateException("Reader is closed");
     }
 
-    // Start with affinity slot based on thread ID for cache locality
-    long threadId = Thread.currentThread().getId();
-    int slot = hashThreadId(threadId) & mask;
-    int attempts = 0;
-
-    while (true) {
-      // Try to acquire this slot atomically (0 -> 1 transition means we got it)
+    // Start with affinity slot based on thread ID, then try random slots
+    int slot = hashThreadId(Thread.currentThread().getId()) & mask;
+    for (int i = 0; i < CAS_ATTEMPTS; i++) {
       if (busy.compareAndSet(slot, 0, 1)) {
-        // We got exclusive access!
         try {
           return operation.execute(pool[slot]);
         } finally {
-          busy.set(slot, 0);  // Release - plain volatile write
+          busy.set(slot, 0);
         }
       }
-
-      // Failed to acquire - exponential backoff under high contention
-      // This frees up CPU for other threads to make progress instead of busy-spinning
-      if (attempts >= 5) {
-        // Exponential backoff: 100ns -> 200ns -> 400ns -> 800ns -> ...
-        // Capped at 1ms to remain responsive while reducing CPU waste
-        long parkNanos = Math.min(100L << (attempts - 5), 1_000_000L);
-        java.util.concurrent.locks.LockSupport.parkNanos(parkNanos);
-      }
-      attempts++;
-
-      // Slot was busy, pick a random slot for next iteration
       slot = ThreadLocalRandom.current().nextInt(pool.length);
+    }
+
+    // All attempts failed — delegate to overflow pool (lazily created, 2x size)
+    return getOrCreateOverflow().executeOnPooledReader(operation);
+  }
+
+  private PooledSparkeyReader getOrCreateOverflow() {
+    PooledSparkeyReader o = overflow;
+    if (o != null) {
+      return o;
+    }
+    synchronized (this) {
+      if (closed) {
+        throw new IllegalStateException("Reader is closed");
+      }
+      if (overflow == null) {
+        overflow = new PooledSparkeyReader(baseReader, pool.length * 2);
+      }
+      return overflow;
     }
   }
 
@@ -370,11 +387,18 @@ public class PooledSparkeyReader implements SparkeyReader {
   }
 
   @Override
-  public void close() {
+  public synchronized void close() {
     if (closed) {
       return;
     }
     closed = true;
+
+    // Mark overflow chain as closed and release references for GC
+    PooledSparkeyReader o = overflow;
+    if (o != null) {
+      o.close();
+    }
+    overflow = null;
 
     // Don't close pooled readers - they're duplicates sharing ByteBuffers with baseReader.
     // Closing baseReader is sufficient as it closes the underlying resources.
