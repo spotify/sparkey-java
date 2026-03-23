@@ -1,5 +1,13 @@
 #### Next Release
 
+#### 3.5.1
+* **Performance fix for network-attached storage**: Replaced `parkNanos` exponential backoff
+  in `PooledSparkeyReader` with a recursive overflow pool. When all CAS slots are busy (e.g.
+  during slow I/O on Hyperdisk), the reader now lazily creates additional pool capacity instead
+  of sleeping. This fixes a 3x performance regression observed on Google Cloud Hyperdisk when
+  upgrading from 3.2.5 to 3.5.0. JMH benchmark with 200μs simulated I/O shows 4x throughput
+  improvement at 64 threads and 11x at 256 threads.
+
 #### 3.5.0
 * **Java 22+ optimizations**: Added MemorySegment-based implementations for zero-copy I/O and values
   larger than 2GB. On Java 22+, `getValueAsStream()` now returns a zero-copy stream that reads
