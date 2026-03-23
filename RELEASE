@@ -9,10 +9,10 @@ Before starting the release, run the verification script to catch common issues:
 ```
 
 This checks:
-- Java 8 is active
+- Java 25+ is active (needed for test compilation; main code targets Java 8 bytecode)
 - Git working directory is clean
 - On master branch
-- Maven settings configured
+- Maven settings configured (server ID `central` for Central Portal)
 - Javadoc builds without errors
 - SCM URLs match git remote
 - Tests pass
@@ -71,18 +71,19 @@ Optional (for GPG passphrase):
 ./verify-release-ready.sh
 
 # 2. Execute release (both prepare and perform can be run together)
-mvn -B release:prepare release:perform -Darguments="-DskipTests=true"
+mvn -B -Psonatype-oss-release release:clean release:prepare release:perform -Darguments="-DskipTests=true"
 
 # Note: Tests are skipped during release since they were already verified in step 1
 ```
 
 **What happens during release:**
+- `release:clean` - Removes any leftover release artifacts from previous attempts
 - `release:prepare` - Creates release tag, bumps version, commits to git, pushes to GitHub
 - `release:perform` - Builds artifacts, signs with GPG, uploads to Maven Central, auto-publishes
 
 **Important notes:**
-- The `-Psonatype-oss-release` profile is NO longer needed with Central Publishing Portal
-- Artifacts are automatically published (no manual staging/closing required)
+- The `-Psonatype-oss-release` profile enables GPG signing (disabled by default in pom.xml)
+- Artifacts are automatically published via Central Portal (no manual staging/closing required)
 - Release takes ~1 minute total
 
 ## Post-Release Verification
@@ -122,7 +123,7 @@ If the release fails partway through:
 ./verify-release-ready.sh
 
 # Retry release
-mvn -B release:prepare release:perform -Darguments="-DskipTests=true"
+mvn -B -Psonatype-oss-release release:clean release:prepare release:perform -Darguments="-DskipTests=true"
 ```
 
 Common issues and solutions documented in [POST-RELEASE-CHECKLIST.md](POST-RELEASE-CHECKLIST.md#troubleshooting)

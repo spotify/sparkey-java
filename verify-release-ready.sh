@@ -116,25 +116,20 @@ else
 fi
 echo
 
-# 4. Check Maven effective settings for FOSS deployment servers
-echo "4. Checking Maven configuration for FOSS deployment..."
+# 4. Check Maven effective settings for Central Portal deployment
+echo "4. Checking Maven configuration for Central Portal deployment..."
 EFFECTIVE_SETTINGS=$(mvn help:effective-settings 2>&1)
 
-# Check for required servers for Sonatype OSSRH deployment
-MISSING_SERVERS=""
-for SERVER_ID in "ossrh" "sonatype-nexus-snapshots" "sonatype-nexus-staging"; do
-    if ! echo "$EFFECTIVE_SETTINGS" | grep -q "<id>$SERVER_ID</id>"; then
-        MISSING_SERVERS="$MISSING_SERVERS $SERVER_ID"
-    fi
-done
-
-if [ -n "$MISSING_SERVERS" ]; then
-    echo -e "${RED}✗ FAIL: Maven settings missing required servers:$MISSING_SERVERS${NC}"
-    echo "  These servers are required for FOSS deployment to Maven Central"
-    echo "  Configure your settings file or use .mvn/maven.config to point to FOSS settings"
+# Check for required server for Sonatype Central Portal (OSSRH was sunset June 2025)
+if ! echo "$EFFECTIVE_SETTINGS" | grep -q "<id>central</id>"; then
+    echo -e "${RED}✗ FAIL: Maven settings missing required server: central${NC}"
+    echo "  This server is required for publishing to Maven Central via Central Portal"
+    echo "  Add to ~/.m2/settings.xml:"
+    echo "    <server><id>central</id><username>TOKEN_USER</username><password>TOKEN_PASS</password></server>"
+    echo "  Get token at: https://central.sonatype.com/account"
     ERRORS=$((ERRORS + 1))
 else
-    echo -e "${GREEN}✓ PASS: Maven configured with FOSS deployment servers (ossrh, sonatype-nexus-*)${NC}"
+    echo -e "${GREEN}✓ PASS: Maven configured with Central Portal server (central)${NC}"
 fi
 echo
 
