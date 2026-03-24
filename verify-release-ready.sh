@@ -218,6 +218,9 @@ if [ $ERRORS -eq 0 ]; then
     echo
     echo "To perform the actual release:"
     echo "  mvn -B -Psonatype-oss-release release:clean release:prepare release:perform -Darguments=\"-DskipTests=true\""
+    echo
+    echo "To release with a specific version (e.g. for major/minor bumps):"
+    echo "  mvn -B -Psonatype-oss-release release:clean release:prepare release:perform -Darguments=\"-DskipTests=true\" -DreleaseVersion=X.Y.Z -DdevelopmentVersion=X.Y.Z+1-SNAPSHOT"
     exit 0
 else
     echo -e "${RED}✗ $ERRORS CHECK(S) FAILED${NC}"

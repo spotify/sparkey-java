@@ -1,5 +1,19 @@
 #### Next Release
 
+#### 3.6.0
+* **Page cache prefetch API**: Added `SparkeyReader.load(LoadMode)` for best-effort prefetching
+  of mapped file data into memory. This can significantly reduce page faults for large sparkey files
+  on network-attached storage (e.g. GCP Hyperdisk) by requesting the OS to make data resident
+  before random lookups begin.
+  - `LoadMode.ALL` — prefetch both index and log
+  - `LoadMode.INDEX` — prefetch only the index (cheap, typically tens of MB)
+  - `LoadMode.LOG` — prefetch only the log
+  - `LoadMode.NONE` — no-op, for configuration-driven call sites
+  - Custom `Executor` support via `load(LoadMode, Executor)`
+  - Returns `LoadResult` with `isDone()`, `await()`, `requestedBytes()`, and `toCompletableFuture()`
+  - Default executor: dedicated daemon thread pool (2 threads), configurable via
+    system property `sparkey.load.parallelism`
+
 #### 3.5.1
 * **Performance fix for network-attached storage**: Replaced `parkNanos` exponential backoff
   in `PooledSparkeyReader` with a recursive overflow pool. When all CAS slots are busy (e.g.
