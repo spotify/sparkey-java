@@ -679,6 +679,22 @@ final class IndexHash {
     return indexData.getLoadedBytes() + logData.getLoadedBytes();
   }
 
+  void loadIndex() {
+    indexData.loadPages();
+  }
+
+  void loadLog() {
+    logData.loadPages();
+  }
+
+  long indexTotalBytes() {
+    return indexData.size();
+  }
+
+  long logTotalBytes() {
+    return logData.totalBytes();
+  }
+
   private class IndexHashEntry implements SparkeyReader.Entry {
     private int keyLen;
     private long valueLen;

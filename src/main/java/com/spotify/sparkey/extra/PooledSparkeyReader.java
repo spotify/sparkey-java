@@ -16,6 +16,8 @@
 package com.spotify.sparkey.extra;
 
 import com.spotify.sparkey.IndexHeader;
+import com.spotify.sparkey.LoadMode;
+import com.spotify.sparkey.LoadResult;
 import com.spotify.sparkey.LogHeader;
 import com.spotify.sparkey.Sparkey;
 import com.spotify.sparkey.SparkeyReader;
@@ -365,6 +367,11 @@ public class PooledSparkeyReader implements SparkeyReader {
     // iterator() creates an isolated duplicate via index.duplicate() and
     // opens its own FileInputStream, so there is no shared mutable state between threads
     return baseReader.iterator();
+  }
+
+  @Override
+  public LoadResult load(LoadMode mode, java.util.concurrent.Executor executor) {
+    return baseReader.load(mode, executor);
   }
 
   @Override

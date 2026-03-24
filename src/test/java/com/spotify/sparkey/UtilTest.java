@@ -213,6 +213,15 @@ public class UtilTest {
     public long getLoadedBytes() {
       return data.length;
     }
+
+    @Override
+    public void loadPages() {
+    }
+
+    @Override
+    public long totalBytes() {
+      return data.length;
+    }
   }
 
   @Test

@@ -19,6 +19,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
+import java.util.concurrent.Executor;
 
 public interface SparkeyReader extends Iterable<SparkeyReader.Entry>, Closeable {
   /**
@@ -80,6 +81,66 @@ public interface SparkeyReader extends Iterable<SparkeyReader.Entry>, Closeable 
     InputStream getValueAsStream();
 
     Type getType();
+  }
+
+  /**
+   * Best-effort request to prefetch all mapped data (index and log) into memory.
+   *
+   * <p>Equivalent to {@code load(LoadMode.ALL)}.
+   *
+   * @return a LoadResult tracking the async operation
+   * @see #load(LoadMode)
+   */
+  default LoadResult load() {
+    return load(LoadMode.ALL);
+  }
+
+  /**
+   * Best-effort request to prefetch mapped data into memory.
+   *
+   * <p>Equivalent to {@code load(mode, defaultExecutor)}.
+   *
+   * @param mode which parts of the sparkey file to prefetch
+   * @return a LoadResult tracking the async operation
+   * @see #load(LoadMode, Executor)
+   */
+  default LoadResult load(LoadMode mode) {
+    if (mode == LoadMode.NONE) {
+      return LoadResult.completed();
+    }
+    return load(mode, LoadResult.getDefaultExecutor());
+  }
+
+  /**
+   * Best-effort request to prefetch mapped data into memory using the given executor.
+   *
+   * <p>Requests the OS/runtime to make the underlying mapped file data resident in memory.
+   * This can improve lookup performance for large sparkey files on network-attached storage
+   * by reducing page faults on first access.
+   *
+   * <p>Prefetching the index is cheap (typically tens of MB) and helps keep hash table
+   * probes in memory. Prefetching the log is more expensive (can be multiple GB) but
+   * helps keep value lookups in memory too.
+   *
+   * <p>The operation runs asynchronously on the given executor. The returned
+   * {@link LoadResult} can be used to wait for completion or compose with other
+   * async operations via {@link LoadResult#toCompletableFuture()}.
+   *
+   * <p>This is best-effort: actual behavior depends on the JDK, OS, and filesystem.
+   * Pages may be evicted under memory pressure. This is not equivalent to mlock.
+   *
+   * <p>If the reader is closed before or during loading, completion is best-effort
+   * and may not prefetch all requested bytes.
+   *
+   * <p>{@link LoadMode#NONE} is a no-op, useful for keeping call sites clean
+   * without conditional logic.
+   *
+   * @param mode which parts of the sparkey file to prefetch
+   * @param executor the executor to run the prefetch task on
+   * @return a LoadResult tracking the async operation
+   */
+  default LoadResult load(LoadMode mode, Executor executor) {
+    return LoadResult.completed();
   }
 
   /**

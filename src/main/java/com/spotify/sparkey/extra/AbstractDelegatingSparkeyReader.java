@@ -16,6 +16,8 @@
 package com.spotify.sparkey.extra;
 
 import com.spotify.sparkey.IndexHeader;
+import com.spotify.sparkey.LoadMode;
+import com.spotify.sparkey.LoadResult;
 import com.spotify.sparkey.LogHeader;
 import com.spotify.sparkey.SparkeyReader;
 
@@ -70,6 +72,11 @@ public abstract class AbstractDelegatingSparkeyReader implements SparkeyReader {
   @Override
   public Iterator<Entry> iterator() {
     return getDelegateReader().iterator();
+  }
+
+  @Override
+  public LoadResult load(LoadMode mode, java.util.concurrent.Executor executor) {
+    return getDelegateReader().load(mode, executor);
   }
 
   @Override

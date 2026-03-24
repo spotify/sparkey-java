@@ -19,6 +19,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.concurrent.Executor;
 
 public final class SingleThreadedSparkeyReaderJ22 implements SparkeyReader {
   private final IndexHashJ22 index;
@@ -146,6 +147,13 @@ public final class SingleThreadedSparkeyReaderJ22 implements SparkeyReader {
         throw new UnsupportedOperationException();
       }
     };
+  }
+
+  @Override
+  public LoadResult load(LoadMode mode, Executor executor) {
+    return LoadResult.load(mode, executor,
+        index.indexTotalBytes(), index::loadIndex,
+        index.logTotalBytes(), index::loadLog);
   }
 
   @Override

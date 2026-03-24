@@ -270,6 +270,20 @@ final class ReadOnlyMemMap implements RandomAccessData {
     return bytes;
   }
 
+  /** Load all chunks into the OS page cache. Blocks until done. */
+  void loadPages() {
+    MappedByteBuffer[] localChunks = source.chunks;
+    if (localChunks != null) {
+      for (MappedByteBuffer chunk : localChunks) {
+        chunk.load();
+      }
+    }
+  }
+
+  long size() {
+    return size;
+  }
+
   private MappedByteBuffer[] getChunks() throws SparkeyReaderClosedException {
     MappedByteBuffer[] localChunks = chunks;
     if (localChunks == null) {

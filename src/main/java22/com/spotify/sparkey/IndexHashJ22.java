@@ -690,6 +690,22 @@ final class IndexHashJ22 {
     return 0 + logData.getLoadedBytes();
   }
 
+  void loadIndex() {
+    indexData.loadPages();
+  }
+
+  void loadLog() {
+    logData.loadPages();
+  }
+
+  long indexTotalBytes() {
+    return indexData.size();
+  }
+
+  long logTotalBytes() {
+    return logData.totalBytes();
+  }
+
   private class IndexHashEntry implements SparkeyReader.Entry {
     private int keyLen;
     private long valueLen;
