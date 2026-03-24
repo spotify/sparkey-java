@@ -210,6 +210,15 @@ final class ReadOnlyMemMapJ22 implements RandomAccessDataStateless {
     return new SparkeyReaderClosedException("Reader has been closed");
   }
 
+  /** Load the segment into the OS page cache. Blocks until done. */
+  void loadPages() {
+    segment.load();
+  }
+
+  long size() {
+    return size;
+  }
+
   ReadOnlyMemMapJ22 duplicate() {
     // ReadOnlyMemMapJ22 is immutable, so just return self - no actual duplication needed
     return this;

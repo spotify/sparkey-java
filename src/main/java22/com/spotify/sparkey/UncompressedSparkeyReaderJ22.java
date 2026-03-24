@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
+import java.util.concurrent.Executor;
 
 /**
  * Sparkey reader optimized for uncompressed files - EXPERIMENTAL.
@@ -256,6 +257,13 @@ public final class UncompressedSparkeyReaderJ22 implements SparkeyReader {
         return nextValidEntry;
       }
     };
+  }
+
+  @Override
+  public LoadResult load(LoadMode mode, Executor executor) {
+    return LoadResult.load(mode, executor,
+        indexData.size(), indexData::loadPages,
+        logData.size(), logData::loadPages);
   }
 
   @Override

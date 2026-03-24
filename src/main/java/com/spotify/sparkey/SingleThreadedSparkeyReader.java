@@ -18,6 +18,7 @@ package com.spotify.sparkey;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
+import java.util.concurrent.Executor;
 import java.util.NoSuchElementException;
 
 final class SingleThreadedSparkeyReader implements SparkeyReader {
@@ -139,6 +140,13 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
         throw new UnsupportedOperationException();
       }
     };
+  }
+
+  @Override
+  public LoadResult load(LoadMode mode, Executor executor) {
+    return LoadResult.load(mode, executor,
+        index.indexTotalBytes(), index::loadIndex,
+        index.logTotalBytes(), index::loadLog);
   }
 
   @Override

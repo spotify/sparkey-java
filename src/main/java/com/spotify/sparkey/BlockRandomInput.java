@@ -35,6 +35,12 @@ interface BlockRandomInput {
 
   long getLoadedBytes();
 
+  /** Load data into the OS page cache. Blocks until done. */
+  void loadPages();
+
+  /** Get total size in bytes. */
+  long totalBytes();
+
   /**
    * Compare bytes at current position with the provided byte array, advancing position by length bytes.
    *

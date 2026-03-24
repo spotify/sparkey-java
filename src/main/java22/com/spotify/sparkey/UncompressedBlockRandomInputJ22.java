@@ -78,6 +78,16 @@ class UncompressedBlockRandomInputJ22 implements BlockRandomInput {
   }
 
   @Override
+  public void loadPages() {
+    data.loadPages();
+  }
+
+  @Override
+  public long totalBytes() {
+    return data.size();
+  }
+
+  @Override
   public boolean readFullyCompare(int length, byte[] key) throws IOException {
     boolean result = data.readFullyCompare(position, length, key);
     position += length;
