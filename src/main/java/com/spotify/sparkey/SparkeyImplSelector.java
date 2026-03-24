@@ -70,7 +70,7 @@ class SparkeyImplSelector {
    *
    * @param file File base to use, the actual file endings will be set to .spi and .spl
    * @return UncompressedSparkeyReaderJ22 (on Java 22+)
-   * @throws UnsupportedOperationException on Java < 22
+   * @throws UnsupportedOperationException on Java older than 22
    * @throws IOException if the file cannot be opened
    */
   static SparkeyReader openUncompressedJ22(File file) throws IOException {
@@ -85,7 +85,7 @@ class SparkeyImplSelector {
    *
    * @param file File base to use, the actual file endings will be set to .spi and .spl
    * @return SingleThreadedSparkeyReaderJ22 (on Java 22+)
-   * @throws UnsupportedOperationException on Java < 22
+   * @throws UnsupportedOperationException on Java older than 22
    * @throws IOException if the file cannot be opened
    */
   static SparkeyReader openSingleThreadedJ22(File file) throws IOException {
