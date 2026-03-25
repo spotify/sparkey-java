@@ -145,8 +145,8 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
   @Override
   public LoadResult load(LoadMode mode, Executor executor) {
     return LoadResult.load(mode, executor,
-        index.indexTotalBytes(), index::loadIndex,
-        index.logTotalBytes(), index::loadLog);
+        index.indexTotalBytes(), index::loadIndex, index::mlockIndex,
+        index.logTotalBytes(), index::loadLog, index::mlockLog);
   }
 
   @Override

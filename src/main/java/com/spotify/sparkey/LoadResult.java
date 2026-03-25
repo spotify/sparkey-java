@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 
 /**
  * Tracks completion of a {@link SparkeyReader#load(LoadMode)} operation.
@@ -38,15 +39,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  * and may not prefetch all requested bytes.
  */
 public class LoadResult {
-  private static final LoadResult COMPLETED = new LoadResult(0, CompletableFuture.completedFuture(null));
+  private static final CompletableFuture<Boolean> FALSE = CompletableFuture.completedFuture(false);
+  private static final LoadResult COMPLETED = new LoadResult(0, FALSE);
 
   private static final String PARALLELISM_PROPERTY = "sparkey.load.parallelism";
   private static volatile Executor defaultExecutor;
 
   private final long requestedBytes;
-  private final CompletableFuture<Void> future;
+  private final CompletableFuture<Boolean> future;
 
-  LoadResult(long requestedBytes, CompletableFuture<Void> future) {
+  LoadResult(long requestedBytes, CompletableFuture<Boolean> future) {
     this.requestedBytes = requestedBytes;
     this.future = future;
   }
@@ -80,13 +82,33 @@ public class LoadResult {
   }
 
   /**
-   * Returns the underlying {@link CompletableFuture} for this load operation.
+   * Returns a {@link CompletableFuture} that completes when this load operation finishes.
    *
-   * <p>Useful for composing with other async operations, adding timeouts,
-   * or inspecting errors.
+   * <p>Useful for composing with other async operations or adding timeouts.
    */
   public CompletableFuture<Void> toCompletableFuture() {
+    return future.thenAccept(b -> {});
+  }
+
+  /**
+   * Returns a {@link CompletableFuture} that resolves to whether pages were successfully
+   * locked in memory via mlock.
+   *
+   * <p>Resolves to {@code true} if all requested pages were locked, {@code false} otherwise.
+   */
+  public CompletableFuture<Boolean> lockedFuture() {
     return future;
+  }
+
+  /**
+   * Returns true if all requested pages were successfully locked in memory via mlock.
+   *
+   * <p>Only meaningful after the load operation has completed ({@link #isDone()} returns true).
+   * Returns false if mlock was not requested, not available (Java older than 22),
+   * or failed (e.g. insufficient privileges or memory limits).
+   */
+  public boolean locked() {
+    return future.isDone() && !future.isCompletedExceptionally() && future.join();
   }
 
   /** Returns a no-op LoadResult that is already complete with zero bytes. */
@@ -98,12 +120,14 @@ public class LoadResult {
    * Create a LoadResult from a byte count and a future.
    *
    * <p>Useful for composing custom load operations, e.g. loading multiple
-   * readers and combining their results.
+   * readers and combining their results. The future's boolean value indicates
+   * whether the pages were successfully locked via mlock ({@code true}) or not
+   * ({@code false}).
    *
    * @param requestedBytes total bytes intended to prefetch
-   * @param future the future tracking completion
+   * @param future the future tracking completion; resolves to true if pages were locked
    */
-  public static LoadResult create(long requestedBytes, CompletableFuture<Void> future) {
+  public static LoadResult create(long requestedBytes, CompletableFuture<Boolean> future) {
     return new LoadResult(requestedBytes, future);
   }
 
@@ -111,33 +135,35 @@ public class LoadResult {
    * Combine multiple LoadResults into one that completes when all are done.
    *
    * <p>The returned result's {@link #requestedBytes()} is the sum of all inputs.
+   * The {@link #locked()} flag is true only if every input with non-zero
+   * {@link #requestedBytes()} reports locked.
    *
    * @param results the LoadResults to combine
    */
+  @SuppressWarnings("unchecked")
   public static LoadResult combine(LoadResult... results) {
     long totalBytes = 0;
-    int pending = 0;
-    CompletableFuture<Void>[] futures = new CompletableFuture[results.length];
-    for (LoadResult r : results) {
-      totalBytes += r.requestedBytes;
-      if (!r.future.isDone()) {
-        futures[pending++] = r.future;
-      }
+    CompletableFuture<Boolean>[] futures = new CompletableFuture[results.length];
+    for (int i = 0; i < results.length; i++) {
+      totalBytes += results[i].requestedBytes;
+      futures[i] = results[i].future;
     }
-    if (pending == 0) {
-      return totalBytes == 0 ? COMPLETED : new LoadResult(totalBytes, CompletableFuture.completedFuture(null));
-    }
-    if (pending == 1) {
-      return new LoadResult(totalBytes, futures[0]);
-    }
-    CompletableFuture<Void> combined = CompletableFuture.allOf(
-        java.util.Arrays.copyOf(futures, pending));
+    LoadResult[] captured = results.clone();
+    CompletableFuture<Boolean> combined = CompletableFuture.allOf(futures)
+        .thenApply(v -> {
+          for (LoadResult r : captured) {
+            if (r.requestedBytes > 0 && !r.future.join()) {
+              return false;
+            }
+          }
+          return true;
+        });
     return new LoadResult(totalBytes, combined);
   }
 
   /** Submit a load task to the given executor, returning a CompletableFuture. */
-  static CompletableFuture<Void> submit(Runnable task, Executor executor) {
-    return CompletableFuture.runAsync(task, executor);
+  static CompletableFuture<Boolean> submit(Runnable task, Executor executor) {
+    return CompletableFuture.runAsync(task, executor).thenApply(v -> false);
   }
 
   /**
@@ -147,26 +173,43 @@ public class LoadResult {
    * @param executor the executor to run tasks on
    * @param indexBytes size of the index data
    * @param indexLoader runnable that loads index pages
+   * @param indexMlocker tries to mlock index pages, returns true on success (may be null)
    * @param logBytes size of the log data
    * @param logLoader runnable that loads log pages
+   * @param logMlocker tries to mlock log pages, returns true on success (may be null)
    */
   static LoadResult load(LoadMode mode, Executor executor,
-                         long indexBytes, Runnable indexLoader,
-                         long logBytes, Runnable logLoader) {
+                         long indexBytes, Runnable indexLoader, BooleanSupplier indexMlocker,
+                         long logBytes, Runnable logLoader, BooleanSupplier logMlocker) {
     java.util.Objects.requireNonNull(mode, "mode");
     java.util.Objects.requireNonNull(executor, "executor");
     if (mode == LoadMode.NONE) {
       return COMPLETED;
     }
-    LoadResult indexResult = COMPLETED;
-    if (mode != LoadMode.LOG) {
-      indexResult = new LoadResult(indexBytes, submit(indexLoader, executor));
-    }
-    LoadResult logResult = COMPLETED;
-    if (mode != LoadMode.INDEX) {
-      logResult = new LoadResult(logBytes, submit(logLoader, executor));
-    }
+    LoadResult indexResult = submitAction(mode.indexAction(), indexBytes, indexLoader, indexMlocker, executor);
+    LoadResult logResult = submitAction(mode.logAction(), logBytes, logLoader, logMlocker, executor);
     return combine(indexResult, logResult);
+  }
+
+  private static LoadResult submitAction(LoadMode.Action action, long bytes,
+                                         Runnable loader, BooleanSupplier mlocker,
+                                         Executor executor) {
+    if (action == LoadMode.Action.NONE) {
+      return COMPLETED;
+    }
+    if (action == LoadMode.Action.MLOCK && mlocker != null) {
+      CompletableFuture<Boolean> future = CompletableFuture.supplyAsync(() -> {
+        if (mlocker.getAsBoolean()) {
+          return true;
+        }
+        // mlock failed, fall back to advisory load
+        loader.run();
+        return false;
+      }, executor);
+      return new LoadResult(bytes, future);
+    }
+    // Advisory load
+    return new LoadResult(bytes, submit(loader, executor));
   }
 
   /**

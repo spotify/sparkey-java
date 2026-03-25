@@ -687,6 +687,14 @@ final class IndexHash {
     logData.loadPages();
   }
 
+  boolean mlockIndex() {
+    return false;
+  }
+
+  boolean mlockLog() {
+    return false;
+  }
+
   long indexTotalBytes() {
     return indexData.size();
   }

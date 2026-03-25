@@ -161,6 +161,11 @@ final class CompressedRandomReader implements BlockRandomInput {
   }
 
   @Override
+  public boolean mlockPages() {
+    return data.mlockPages();
+  }
+
+  @Override
   public long totalBytes() {
     return data.totalBytes();
   }

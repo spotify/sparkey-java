@@ -38,6 +38,11 @@ interface BlockRandomInput {
   /** Load data into the OS page cache. Blocks until done. */
   void loadPages();
 
+  /** Try to mlock the data. Returns true if successful. */
+  default boolean mlockPages() {
+    return false;
+  }
+
   /** Get total size in bytes. */
   long totalBytes();
 
