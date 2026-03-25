@@ -90,18 +90,49 @@ public class LoadResult {
   }
 
   /** Returns a no-op LoadResult that is already complete with zero bytes. */
-  static LoadResult completed() {
+  public static LoadResult completed() {
     return COMPLETED;
   }
 
-  /** Combine two LoadResults into one that completes when both are done. */
-  static LoadResult combine(LoadResult a, LoadResult b) {
-    if (a == COMPLETED) return b;
-    if (b == COMPLETED) return a;
-    return new LoadResult(
-        a.requestedBytes + b.requestedBytes,
-        CompletableFuture.allOf(a.future, b.future)
-    );
+  /**
+   * Create a LoadResult from a byte count and a future.
+   *
+   * <p>Useful for composing custom load operations, e.g. loading multiple
+   * readers and combining their results.
+   *
+   * @param requestedBytes total bytes intended to prefetch
+   * @param future the future tracking completion
+   */
+  public static LoadResult create(long requestedBytes, CompletableFuture<Void> future) {
+    return new LoadResult(requestedBytes, future);
+  }
+
+  /**
+   * Combine multiple LoadResults into one that completes when all are done.
+   *
+   * <p>The returned result's {@link #requestedBytes()} is the sum of all inputs.
+   *
+   * @param results the LoadResults to combine
+   */
+  public static LoadResult combine(LoadResult... results) {
+    long totalBytes = 0;
+    int pending = 0;
+    CompletableFuture<Void>[] futures = new CompletableFuture[results.length];
+    for (LoadResult r : results) {
+      totalBytes += r.requestedBytes;
+      if (!r.future.isDone()) {
+        futures[pending++] = r.future;
+      }
+    }
+    if (pending == 0) {
+      return totalBytes == 0 ? COMPLETED : new LoadResult(totalBytes, CompletableFuture.completedFuture(null));
+    }
+    if (pending == 1) {
+      return new LoadResult(totalBytes, futures[0]);
+    }
+    CompletableFuture<Void> combined = CompletableFuture.allOf(
+        java.util.Arrays.copyOf(futures, pending));
+    return new LoadResult(totalBytes, combined);
   }
 
   /** Submit a load task to the given executor, returning a CompletableFuture. */
