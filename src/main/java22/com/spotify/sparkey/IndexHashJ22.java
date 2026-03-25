@@ -698,6 +698,14 @@ final class IndexHashJ22 {
     logData.loadPages();
   }
 
+  boolean mlockIndex() {
+    return indexData.mlockPages();
+  }
+
+  boolean mlockLog() {
+    return logData.mlockPages();
+  }
+
   long indexTotalBytes() {
     return indexData.size();
   }

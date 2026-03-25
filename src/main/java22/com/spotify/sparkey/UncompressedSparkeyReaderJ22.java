@@ -262,8 +262,8 @@ public final class UncompressedSparkeyReaderJ22 implements SparkeyReader {
   @Override
   public LoadResult load(LoadMode mode, Executor executor) {
     return LoadResult.load(mode, executor,
-        indexData.size(), indexData::loadPages,
-        logData.size(), logData::loadPages);
+        indexData.size(), indexData::loadPages, indexData::mlockPages,
+        logData.size(), logData::loadPages, logData::mlockPages);
   }
 
   @Override

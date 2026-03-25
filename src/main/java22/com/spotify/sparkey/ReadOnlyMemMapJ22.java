@@ -215,6 +215,11 @@ final class ReadOnlyMemMapJ22 implements RandomAccessDataStateless {
     segment.load();
   }
 
+  /** Try to mlock the segment. Returns true if successful. */
+  boolean mlockPages() {
+    return MlockSupport.mlock(segment);
+  }
+
   long size() {
     return size;
   }

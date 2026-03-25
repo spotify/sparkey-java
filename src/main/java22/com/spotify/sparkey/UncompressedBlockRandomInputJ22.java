@@ -83,6 +83,11 @@ class UncompressedBlockRandomInputJ22 implements BlockRandomInput {
   }
 
   @Override
+  public boolean mlockPages() {
+    return data.mlockPages();
+  }
+
+  @Override
   public long totalBytes() {
     return data.size();
   }

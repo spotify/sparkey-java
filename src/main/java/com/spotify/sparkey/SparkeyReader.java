@@ -126,8 +126,18 @@ public interface SparkeyReader extends Iterable<SparkeyReader.Entry>, Closeable 
    * {@link LoadResult} can be used to wait for completion or compose with other
    * async operations via {@link LoadResult#toCompletableFuture()}.
    *
-   * <p>This is best-effort: actual behavior depends on the JDK, OS, and filesystem.
-   * Pages may be evicted under memory pressure. This is not equivalent to mlock.
+   * <p>Advisory modes ({@link LoadMode#ALL}, etc.) are best-effort: actual behavior
+   * depends on the JDK, OS, and filesystem. Pages may be evicted under memory pressure.
+   *
+   * <p>MLOCK modes ({@link LoadMode#ALL_MLOCK}, etc.) attempt to pin pages in RAM
+   * using {@code mlock(2)}, preventing eviction. This requires:
+   * <ul>
+   *   <li>Java 22+ (uses the Foreign Function &amp; Memory API)</li>
+   *   <li>{@code --enable-native-access=ALL-UNNAMED} JVM flag</li>
+   *   <li>Sufficient OS memory lock limits ({@code ulimit -l} or {@code CAP_IPC_LOCK})</li>
+   * </ul>
+   * If any requirement is not met, mlock falls back to advisory prefetching silently.
+   * Use {@link LoadResult#locked()} to check whether mlock succeeded.
    *
    * <p>If the reader is closed before or during loading, completion is best-effort
    * and may not prefetch all requested bytes.
