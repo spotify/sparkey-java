@@ -1,5 +1,15 @@
 #### Next Release
 
+#### 3.6.1
+* **mlock support**: Added `INDEX_MLOCK`, `LOG_MLOCK`, `ALL_MLOCK` to `LoadMode` for pinning
+  pages in RAM via `mlock(2)`, preventing eviction under memory pressure. Requires Java 22+
+  and `--enable-native-access=ALL-UNNAMED`. Falls back silently to advisory prefetch if
+  unavailable. Use `LoadResult.locked()` to check whether mlock succeeded.
+* **Public LoadResult API**: `LoadResult.completed()`, `create()`, and `combine()` are now
+  public, enabling external composition (e.g. aggregating results from multiple sharded readers).
+* **LoadResult.lockedFuture()**: Returns a `CompletableFuture<Boolean>` for async composition
+  on the locked state.
+
 #### 3.6.0
 * **Page cache prefetch API**: Added `SparkeyReader.load(LoadMode)` for best-effort prefetching
   of mapped file data into memory. This can significantly reduce page faults for large sparkey files
