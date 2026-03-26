@@ -117,6 +117,38 @@ public enum ReaderType {
     public boolean supportsMultithreading() {
       return false;
     }
+  },
+
+  /**
+   * Heap-backed pooled reader (JDK 8+).
+   * Reads entire file into byte[] on JVM heap. Thread-safe.
+   */
+  POOLED_HEAP("Pooled_Heap", false, false) {
+    @Override
+    public SparkeyReader open(File file) throws IOException {
+      return SparkeyTestHelper.openHeapBacked(file);
+    }
+
+    @Override
+    public boolean supportsMultithreading() {
+      return true;
+    }
+  },
+
+  /**
+   * Heap-backed single-threaded reader (JDK 8+).
+   * Reads entire file into byte[] on JVM heap. Not thread-safe.
+   */
+  SINGLE_THREADED_HEAP("SingleThreaded_Heap", false, false) {
+    @Override
+    public SparkeyReader open(File file) throws IOException {
+      return SparkeyTestHelper.openHeapBackedSingleThreaded(file);
+    }
+
+    @Override
+    public boolean supportsMultithreading() {
+      return false;
+    }
   };
 
   private final String name;

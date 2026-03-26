@@ -28,8 +28,8 @@ import java.util.concurrent.TimeUnit;
  * Tests both uncompressed and compressed files.
  */
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 2)  // 3 iterations × 2 seconds = 6s warmup
-@Measurement(iterations = 10, time = 2)  // 10 iterations × 2 seconds = 20s measurement
+@Warmup(iterations = 3, time = 1)
+@Measurement(iterations = 10, time = 2)
 @Fork(1)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
@@ -54,7 +54,7 @@ public class ReaderComparisonBenchmark {
   @Param({"NONE", "SNAPPY"})  // Uncompressed and Snappy
   public String compressionType;
 
-  @Param({"SINGLE_THREADED_MMAP_JDK8", "POOLED_MMAP_JDK8", "UNCOMPRESSED_MEMORYSEGMENT_J22", "SINGLE_THREADED_MEMORYSEGMENT_J22", "POOLED_MEMORYSEGMENT_J22"})
+  @Param({"SINGLE_THREADED_MMAP_JDK8", "POOLED_MMAP_JDK8", "UNCOMPRESSED_MEMORYSEGMENT_J22", "SINGLE_THREADED_MEMORYSEGMENT_J22", "SINGLE_THREADED_HEAP", "POOLED_HEAP"})
   public String readerType;
 
   @Param({"0", "50"})  // 0 = small values (~6 bytes), 50 = large values (~56 bytes)

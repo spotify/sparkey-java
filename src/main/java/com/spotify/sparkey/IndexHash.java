@@ -66,6 +66,10 @@ final class IndexHash {
   }
 
   static IndexHash open(File indexFile, File logFile) throws IOException {
+    return open(indexFile, logFile, false);
+  }
+
+  static IndexHash open(File indexFile, File logFile, boolean heapBacked) throws IOException {
     IndexHeader header = IndexHeader.read(indexFile);
     LogHeader logHeader = LogHeader.read(logFile);
     verifyIdentifier(logHeader, header);
@@ -79,9 +83,16 @@ final class IndexHash {
     IndexHash indexHash = null;
     try {
       int maxBlockSize = 0;
-      indexData = new ReadOnlyMemMap(indexFile);
+      ReadOnlyMemMap logMemMap;
+      if (heapBacked) {
+        indexData = ReadOnlyMemMap.fromHeap(indexFile);
+        logMemMap = ReadOnlyMemMap.fromHeap(logFile);
+      } else {
+        indexData = new ReadOnlyMemMap(indexFile);
+        logMemMap = new ReadOnlyMemMap(logFile);
+      }
       maxBlockSize = logHeader.getCompressionBlockSize();
-      logData = logHeader.getCompressionTypeBackend().createRandomAccessData(new ReadOnlyMemMap(logFile),
+      logData = logHeader.getCompressionTypeBackend().createRandomAccessData(logMemMap,
               maxBlockSize);
 
       indexHash = new IndexHash(indexFile, logFile, header, logHeader, indexData, maxBlockSize, logData);

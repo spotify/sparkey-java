@@ -16,8 +16,10 @@
 package com.spotify.sparkey;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -33,15 +35,16 @@ final class ReadOnlyMemMap implements RandomAccessData {
   private final long mapSize = 1 << mapBits;
   private final long mapBitmask = ((1L << mapBits) - 1);
   private final File file;
+  private final boolean heapBacked;
 
   private final ReadOnlyMemMap source;
-  private volatile MappedByteBuffer[] chunks;
+  private volatile ByteBuffer[] chunks;
   private final RandomAccessFile randomAccessFile;
   private final long size;
   private final int numChunks;
 
   private int curChunkIndex;
-  private volatile MappedByteBuffer curChunk;
+  private volatile ByteBuffer curChunk;
 
   // Used for making sure we close all instances before cleaning up the byte buffers
   private final Set<ReadOnlyMemMap> allInstances;
@@ -49,6 +52,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   ReadOnlyMemMap(File file) throws IOException {
     this.source = this;
     this.file = file;
+    this.heapBacked = false;
     this.allInstances = Collections.newSetFromMap(new IdentityHashMap<>());
     this.allInstances.add(this);
 
@@ -67,15 +71,15 @@ final class ReadOnlyMemMap implements RandomAccessData {
       if (size <= 0) {
         throw new IllegalArgumentException("Non-positive size: " + size);
       }
-      final ArrayList<MappedByteBuffer> chunksBuffer = new ArrayList<>();
+      final ArrayList<ByteBuffer> chunksBuffer = new ArrayList<>();
       long offset = 0;
       while (offset < size) {
         long remaining = size - offset;
         long chunkSize = Math.min(remaining, mapSize);
-        chunksBuffer.add(createChunk(offset, chunkSize));
+        chunksBuffer.add(createMappedChunk(offset, chunkSize));
         offset += mapSize;
       }
-      chunks = chunksBuffer.toArray(new MappedByteBuffer[chunksBuffer.size()]);
+      chunks = chunksBuffer.toArray(new ByteBuffer[0]);
       numChunks = chunks.length;
 
       curChunkIndex = 0;
@@ -89,15 +93,63 @@ final class ReadOnlyMemMap implements RandomAccessData {
     }
   }
 
-  private MappedByteBuffer createChunk(final long offset, final long size) throws IOException {
+  private ReadOnlyMemMap(File file, ByteBuffer[] chunks, long size) {
+    this.source = this;
+    this.file = file;
+    this.heapBacked = true;
+    this.randomAccessFile = null;
+    this.allInstances = Collections.newSetFromMap(new IdentityHashMap<>());
+    this.allInstances.add(this);
+    this.size = size;
+    this.chunks = chunks;
+    this.numChunks = chunks.length;
+    curChunkIndex = 0;
+    curChunk = chunks[0];
+    curChunk.position(0);
+    Sparkey.incrOpenMaps();
+  }
+
+  static ReadOnlyMemMap fromHeap(File file) throws IOException {
+    long size = file.length();
+    if (size <= 0) {
+      throw new IllegalArgumentException("Non-positive size: " + size);
+    }
+    int mapBits = MAP_SIZE_BITS;
+    long mapSize = 1L << mapBits;
+
+    ArrayList<ByteBuffer> chunksBuffer = new ArrayList<>();
+    try (FileInputStream fis = new FileInputStream(file)) {
+      long remaining = size;
+      while (remaining > 0) {
+        int chunkSize = (int) Math.min(remaining, mapSize);
+        byte[] data = new byte[chunkSize];
+        int read = 0;
+        while (read < chunkSize) {
+          int n = fis.read(data, read, chunkSize - read);
+          if (n < 0) {
+            throw new IOException("Unexpected end of file: " + file);
+          }
+          read += n;
+        }
+        ByteBuffer buf = ByteBuffer.wrap(data);
+        buf.order(ByteOrder.LITTLE_ENDIAN);
+        chunksBuffer.add(buf);
+        remaining -= chunkSize;
+      }
+    }
+    return new ReadOnlyMemMap(file, chunksBuffer.toArray(new ByteBuffer[0]), size);
+  }
+
+  private MappedByteBuffer createMappedChunk(final long offset, final long size) throws IOException {
     final MappedByteBuffer map = randomAccessFile.getChannel().map(FileChannel.MapMode.READ_ONLY, offset, size);
     map.order(ByteOrder.LITTLE_ENDIAN);
     return map;
   }
 
-  private ReadOnlyMemMap(ReadOnlyMemMap source, MappedByteBuffer[] chunks) {
+  private ReadOnlyMemMap(ReadOnlyMemMap source, ByteBuffer[] chunks) {
     this.source = source;
     this.file = source.file;
+    this.heapBacked = source.heapBacked;
     this.allInstances = source.allInstances;
     this.randomAccessFile = source.randomAccessFile;
     this.size = source.size;
@@ -109,7 +161,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   }
 
   public void close() {
-    final MappedByteBuffer[] chunks;
+    final ByteBuffer[] chunks;
     final boolean onlyUser;
     synchronized (allInstances) {
       if (this.chunks == null) {
@@ -121,8 +173,10 @@ final class ReadOnlyMemMap implements RandomAccessData {
         map.chunks = null;
         map.curChunk = null;
       }
-      Sparkey.decrOpenFiles();
-      Util.nonThrowingClose(randomAccessFile);
+      if (randomAccessFile != null) {
+        Sparkey.decrOpenFiles();
+        Util.nonThrowingClose(randomAccessFile);
+      }
     }
     Sparkey.decrOpenMaps();
     ByteBufferCleaner.cleanChunks(chunks, !onlyUser);
@@ -142,19 +196,19 @@ final class ReadOnlyMemMap implements RandomAccessData {
     }
     int partIndex = (int) (pos >>> mapBits);
     curChunkIndex = partIndex;
-    MappedByteBuffer[] chunks = getChunks();
-    MappedByteBuffer curChunk = chunks[partIndex];
+    ByteBuffer[] chunks = getChunks();
+    ByteBuffer curChunk = chunks[partIndex];
     curChunk.position((int) (pos & mapBitmask));
     this.curChunk = curChunk;
   }
 
   private void next() throws IOException {
-    MappedByteBuffer[] chunks = getChunks();
+    ByteBuffer[] chunks = getChunks();
     curChunkIndex++;
     if (curChunkIndex >= chunks.length) {
       throw corruptionException();
     }
-    MappedByteBuffer curChunk = chunks[curChunkIndex];
+    ByteBuffer curChunk = chunks[curChunkIndex];
     if (curChunk == null) {
       throw new RuntimeException("chunk == null");
     }
@@ -164,7 +218,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
 
   @Override
   public int readUnsignedByte() throws IOException {
-    MappedByteBuffer curChunk = getCurChunk();
+    ByteBuffer curChunk = getCurChunk();
     if (curChunk.remaining() == 0) {
       next();
       curChunk = getCurChunk();
@@ -174,7 +228,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
 
   @Override
   public int readLittleEndianInt() throws IOException {
-    MappedByteBuffer curChunk = getCurChunk();
+    ByteBuffer curChunk = getCurChunk();
     if (curChunk.remaining() >= 4) {
       return curChunk.getInt();
     }
@@ -185,7 +239,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
 
   @Override
   public long readLittleEndianLong() throws IOException {
-    MappedByteBuffer curChunk = getCurChunk();
+    ByteBuffer curChunk = getCurChunk();
     if (curChunk.remaining() >= 8) {
       return curChunk.getLong();
     }
@@ -195,7 +249,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   }
 
   public void readFully(byte[] buffer, int offset, int length) throws IOException {
-    MappedByteBuffer curChunk = getCurChunk();
+    ByteBuffer curChunk = getCurChunk();
     long remaining = curChunk.remaining();
     if (remaining >= length) {
       curChunk.get(buffer, offset, length);
@@ -210,7 +264,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   }
 
   public boolean readFullyCompare(int length, byte[] key) throws IOException {
-    MappedByteBuffer curChunk = getCurChunk();
+    ByteBuffer curChunk = getCurChunk();
     int remaining = curChunk.remaining();
     if (remaining >= length) {
       // Fast path: all bytes are in current chunk
@@ -250,7 +304,7 @@ final class ReadOnlyMemMap implements RandomAccessData {
   }
 
   public void skipBytes(long amount) throws IOException {
-    MappedByteBuffer curChunk = getCurChunk();
+    ByteBuffer curChunk = getCurChunk();
     int remaining = curChunk.remaining();
     if (remaining >= amount) {
       curChunk.position((int) (curChunk.position() + amount));
@@ -261,39 +315,49 @@ final class ReadOnlyMemMap implements RandomAccessData {
   }
 
   public long getLoadedBytes() {
+    if (heapBacked) {
+      return size;
+    }
     long bytes = 0;
-    for (MappedByteBuffer chunk : source.chunks) {
-      if (chunk.isLoaded()) {
+    for (ByteBuffer chunk : source.chunks) {
+      if (((MappedByteBuffer) chunk).isLoaded()) {
         bytes += chunk.capacity();
       }
     }
     return bytes;
   }
 
-  /** Load all chunks into the OS page cache. Blocks until done. */
+  /** Load all chunks into the OS page cache (mmap) or no-op (heap). */
   void loadPages() {
-    MappedByteBuffer[] localChunks = source.chunks;
+    if (heapBacked) {
+      return;
+    }
+    ByteBuffer[] localChunks = source.chunks;
     if (localChunks != null) {
-      for (MappedByteBuffer chunk : localChunks) {
-        chunk.load();
+      for (ByteBuffer chunk : localChunks) {
+        ((MappedByteBuffer) chunk).load();
       }
     }
+  }
+
+  boolean isHeapBacked() {
+    return heapBacked;
   }
 
   long size() {
     return size;
   }
 
-  private MappedByteBuffer[] getChunks() throws SparkeyReaderClosedException {
-    MappedByteBuffer[] localChunks = chunks;
+  private ByteBuffer[] getChunks() throws SparkeyReaderClosedException {
+    ByteBuffer[] localChunks = chunks;
     if (localChunks == null) {
       throw closedException();
     }
     return localChunks;
   }
 
-  private MappedByteBuffer getCurChunk() throws SparkeyReaderClosedException {
-    final MappedByteBuffer curChunk = this.curChunk;
+  private ByteBuffer getCurChunk() throws SparkeyReaderClosedException {
+    final ByteBuffer curChunk = this.curChunk;
     if (curChunk == null) {
       throw closedException();
     }
@@ -314,9 +378,9 @@ final class ReadOnlyMemMap implements RandomAccessData {
         // Duplicating a closed instance is silly, and there's no point in actually duplicating it
         return this;
       }
-      MappedByteBuffer[] chunks = new MappedByteBuffer[numChunks];
+      ByteBuffer[] chunks = new ByteBuffer[numChunks];
       for (int i = 0; i < numChunks; i++) {
-        chunks[i] = (MappedByteBuffer) this.chunks[i].duplicate();
+        chunks[i] = this.chunks[i].duplicate();
         chunks[i].order(ByteOrder.LITTLE_ENDIAN);
       }
       ReadOnlyMemMap duplicate = new ReadOnlyMemMap(source, chunks);
