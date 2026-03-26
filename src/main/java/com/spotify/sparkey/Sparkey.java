@@ -84,6 +84,22 @@ public final class Sparkey {
   }
 
   /**
+   * Create a builder for configuring a SparkeyReader.
+   *
+   * <p>Example usage:
+   * <pre>{@code
+   * SparkeyReader reader = Sparkey.reader().file(base).open();
+   * SparkeyReader reader = Sparkey.reader().file(base).useHeap(true).open();
+   * SparkeyReader reader = Sparkey.reader().indexFile(idx).logFile(log).open();
+   * }</pre>
+   *
+   * @return a new builder
+   */
+  public static SparkeyReaderBuilder reader() {
+    return new SparkeyReaderBuilder();
+  }
+
+  /**
    * Open a new, thread-safe, sparkey reader
    *
    * <p>Returns a {@link PooledSparkeyReader} with default pool size, which provides
@@ -95,21 +111,20 @@ public final class Sparkey {
    * @return a new pooled reader
    */
   public static SparkeyReader open(File file) throws IOException {
-    return SparkeyImplSelector.open(file);
+    return reader().file(file).open();
   }
 
   /**
    * Open a new, thread-safe, sparkey reader
    *
-   * @deprecated Use {@link #open(File)} or {@link #openPooledReader(File)} instead.
-   *             This method now returns a PooledSparkeyReader for better performance and memory usage.
+   * @deprecated Use {@link #open(File)} or {@link #reader()} instead.
    *
    * @param file File base to use, the actual file endings will be set to .spi and .spl
    * @return a new reader,
    */
   @Deprecated
   public static SparkeyReader openThreadLocalReader(File file) throws IOException {
-    return SparkeyImplSelector.open(file);
+    return reader().file(file).open();
   }
 
   /**
@@ -121,7 +136,7 @@ public final class Sparkey {
    * @return a new reader,
    */
   public static SparkeyReader openSingleThreadedReader(File file) throws IOException {
-    return SparkeyImplSelector.openSingleThreaded(file);
+    return reader().file(file).singleThreaded().open();
   }
 
   /**
@@ -139,7 +154,7 @@ public final class Sparkey {
    * @see PooledSparkeyReader for more details on pool sizing and performance
    */
   public static SparkeyReader openPooledReader(File file) throws IOException {
-    return SparkeyImplSelector.openPooled(file);
+    return reader().file(file).open();
   }
 
   /**
@@ -159,7 +174,7 @@ public final class Sparkey {
    * @see PooledSparkeyReader for more details on pool sizing and performance
    */
   public static SparkeyReader openPooledReader(File file, int poolSize) throws IOException {
-    return SparkeyImplSelector.openPooled(file, poolSize);
+    return reader().file(file).poolSize(poolSize).open();
   }
 
   /**

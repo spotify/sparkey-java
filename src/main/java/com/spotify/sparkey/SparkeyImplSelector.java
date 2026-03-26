@@ -15,82 +15,41 @@ import java.io.IOException;
 class SparkeyImplSelector {
 
   /**
-   * Open a SparkeyReader with the optimal implementation for the current Java version.
+   * Open a SparkeyReader configured by the builder.
+   * Overridden by the Java 22+ MRJAR variant to use optimized implementations.
    *
-   * Base implementation (Java 8-21): Returns PooledSparkeyReader using FileChannel.
-   * Java 22+ override: Returns optimized implementations using MemorySegment API.
-   *
-   * @param file File base to use, the actual file endings will be set to .spi and .spl
-   * @return an optimal SparkeyReader for the current Java version
+   * @param builder the reader configuration
+   * @return a SparkeyReader
    * @throws IOException if the file cannot be opened
    */
-  static SparkeyReader open(File file) throws IOException {
-    return PooledSparkeyReader.open(file);
+  /**
+   * Open an uncompressed J22 reader. Overridden in J22 MRJAR variant.
+   * Used by tests to force a specific implementation.
+   */
+  static SparkeyReader openUncompressedJ22(File indexFile, File logFile) throws IOException {
+    throw new UnsupportedOperationException("Requires Java 22+");
   }
 
   /**
-   * Open a single-threaded SparkeyReader.
-   *
-   * This is not thread-safe and should only be used from one thread.
-   *
-   * @param file File base to use, the actual file endings will be set to .spi and .spl
-   * @return a single-threaded SparkeyReader
-   * @throws IOException if the file cannot be opened
+   * Open a single-threaded J22 reader. Overridden in J22 MRJAR variant.
+   * Used by tests to force a specific implementation.
    */
-  static SparkeyReader openSingleThreaded(File file) throws IOException {
-    return SingleThreadedSparkeyReader.open(file);
+  static SparkeyReader openSingleThreadedJ22(File indexFile, File logFile) throws IOException {
+    throw new UnsupportedOperationException("Requires Java 22+");
   }
 
-  /**
-   * Open a pooled SparkeyReader with default pool size.
-   *
-   * @param file File base to use, the actual file endings will be set to .spi and .spl
-   * @return a pooled SparkeyReader
-   * @throws IOException if the file cannot be opened
-   */
-  static SparkeyReader openPooled(File file) throws IOException {
-    return PooledSparkeyReader.open(file);
-  }
+  static SparkeyReader open(SparkeyReaderBuilder builder) throws IOException {
+    File indexFile = builder.indexFile();
+    File logFile = builder.logFile();
+    boolean heapBacked = builder.isHeapBacked();
 
-  /**
-   * Open a pooled SparkeyReader with the specified pool size.
-   *
-   * @param file File base to use, the actual file endings will be set to .spi and .spl
-   * @param poolSize number of reader instances (minimum 1)
-   * @return a pooled SparkeyReader
-   * @throws IOException if the file cannot be opened
-   */
-  static SparkeyReader openPooled(File file, int poolSize) throws IOException {
-    return PooledSparkeyReader.open(file, poolSize);
-  }
-
-  /**
-   * Open an uncompressed reader using Java 22+ MemorySegment API.
-   * Only available on Java 22+.
-   *
-   * @param file File base to use, the actual file endings will be set to .spi and .spl
-   * @return UncompressedSparkeyReaderJ22 (on Java 22+)
-   * @throws UnsupportedOperationException on Java older than 22
-   * @throws IOException if the file cannot be opened
-   */
-  static SparkeyReader openUncompressedJ22(File file) throws IOException {
-    throw new UnsupportedOperationException(
-        "UncompressedSparkeyReaderJ22 requires Java 22+, currently running " +
-        System.getProperty("java.version"));
-  }
-
-  /**
-   * Open a single-threaded reader using Java 22+ MemorySegment API.
-   * Only available on Java 22+.
-   *
-   * @param file File base to use, the actual file endings will be set to .spi and .spl
-   * @return SingleThreadedSparkeyReaderJ22 (on Java 22+)
-   * @throws UnsupportedOperationException on Java older than 22
-   * @throws IOException if the file cannot be opened
-   */
-  static SparkeyReader openSingleThreadedJ22(File file) throws IOException {
-    throw new UnsupportedOperationException(
-        "SingleThreadedSparkeyReaderJ22 requires Java 22+, currently running " +
-        System.getProperty("java.version"));
+    if (builder.isSingleThreaded()) {
+      return SingleThreadedSparkeyReader.open(indexFile, logFile, heapBacked);
+    }
+    SparkeyReader base = SingleThreadedSparkeyReader.open(indexFile, logFile, heapBacked);
+    if (builder.poolSize() > 0) {
+      return PooledSparkeyReader.fromReader(base, builder.poolSize());
+    }
+    return PooledSparkeyReader.fromReader(base);
   }
 }

@@ -42,14 +42,15 @@ class ByteBufferCleaner {
   }
 
   /**
-   * Clean an array of MappedByteBuffers, with optional sleep for multi-threaded scenarios.
+   * Clean an array of ByteBuffers, with optional sleep for multi-threaded scenarios.
+   * Only cleans MappedByteBuffer instances; heap-backed ByteBuffers are skipped.
    * On Java 19+, this is a no-op (no sleep, no clean).
    * On Java 8-18, sleeps if needed to allow other threads to see null assignments, then cleans.
    *
    * @param chunks the array of buffers to clean
    * @param otherRefsExist true if other threads might still hold references to the buffers
    */
-  public static void cleanChunks(MappedByteBuffer[] chunks, boolean otherRefsExist) {
+  public static void cleanChunks(ByteBuffer[] chunks, boolean otherRefsExist) {
     if (!CLEANER.needsClean()) {
       // Java 19+: No cleaning needed, so no sleep needed either
       return;
@@ -66,9 +67,11 @@ class ByteBufferCleaner {
       }
     }
 
-    // Clean all buffers
-    for (MappedByteBuffer chunk : chunks) {
-      CLEANER.clean(chunk);
+    // Clean all mapped buffers
+    for (ByteBuffer chunk : chunks) {
+      if (chunk instanceof MappedByteBuffer) {
+        CLEANER.clean((MappedByteBuffer) chunk);
+      }
     }
   }
 

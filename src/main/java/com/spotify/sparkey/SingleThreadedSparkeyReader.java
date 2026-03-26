@@ -32,6 +32,10 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
     this(indexFile, logFile, IndexHash.open(indexFile, logFile));
   }
 
+  private SingleThreadedSparkeyReader(File indexFile, File logFile, boolean heapBacked) throws IOException {
+    this(indexFile, logFile, IndexHash.open(indexFile, logFile, heapBacked));
+  }
+
   private SingleThreadedSparkeyReader(File indexFile, File logFile, IndexHash index) {
     this.index = index;
     this.indexFile = indexFile;
@@ -45,8 +49,8 @@ final class SingleThreadedSparkeyReader implements SparkeyReader {
     return new SingleThreadedSparkeyReader(indexFile, logFile, index.duplicate());
   }
 
-  static SingleThreadedSparkeyReader open(File file) throws IOException {
-    return new SingleThreadedSparkeyReader(Sparkey.getIndexFile(file), Sparkey.getLogFile(file));
+  static SingleThreadedSparkeyReader open(File indexFile, File logFile, boolean heapBacked) throws IOException {
+    return new SingleThreadedSparkeyReader(indexFile, logFile, heapBacked);
   }
 
   @Override

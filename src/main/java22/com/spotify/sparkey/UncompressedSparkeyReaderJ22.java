@@ -58,21 +58,6 @@ public final class UncompressedSparkeyReaderJ22 implements SparkeyReader {
   }
 
   /**
-   * Open an uncompressed Sparkey reader.
-   * Only supports uncompressed files.
-   *
-   * @throws UnsupportedOperationException if file is compressed
-   */
-  public static UncompressedSparkeyReaderJ22 open(File file) throws IOException {
-    File indexFile = Sparkey.getIndexFile(file);
-    File logFile = Sparkey.getLogFile(file);
-
-    // Check compression type
-    LogHeader logHeader = Sparkey.getLogHeader(logFile);
-    return open(indexFile, logFile, logHeader);
-  }
-
-  /**
    * Open an uncompressed Sparkey reader with pre-read LogHeader.
    * Only supports uncompressed files.
    *

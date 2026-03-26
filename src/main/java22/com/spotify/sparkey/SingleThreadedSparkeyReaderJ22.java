@@ -45,8 +45,8 @@ public final class SingleThreadedSparkeyReaderJ22 implements SparkeyReader {
     return new SingleThreadedSparkeyReaderJ22(indexFile, logFile, index.duplicate());
   }
 
-  public static SparkeyReader open(File file) throws IOException {
-    return new SingleThreadedSparkeyReaderJ22(Sparkey.getIndexFile(file), Sparkey.getLogFile(file));
+  static SparkeyReader open(File indexFile, File logFile) throws IOException {
+    return new SingleThreadedSparkeyReaderJ22(indexFile, logFile);
   }
 
   @Override
