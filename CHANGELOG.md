@@ -1,5 +1,16 @@
 #### Next Release
 
+#### 3.7.0
+* **Heap-backed reader**: Read sparkey files into JVM heap `byte[]` arrays instead of
+  memory-mapped files. Useful when the JVM has a large unused heap but limited page cache.
+  Open is slower (must read entire file), but avoids page cache pressure entirely.
+  Heap-backed lookups are 2-11% slower than mmap when data is resident in memory.
+* **SparkeyReaderBuilder**: Fluent builder API for configuring readers:
+  `Sparkey.reader().file(f).useHeap(true).open()`. Supports explicit `indexFile()`/`logFile()`
+  for non-standard file names. Options: `useHeap()`, `singleThreaded()`, `poolSize()`.
+* **SparkeyImplSelector consolidation**: Internal reader selection reduced to a single
+  `open(builder)` method, overridden via MRJAR for Java 22+.
+
 #### 3.6.1
 * **mlock support**: Added `INDEX_MLOCK`, `LOG_MLOCK`, `ALL_MLOCK` to `LoadMode` for pinning
   pages in RAM via `mlock(2)`, preventing eviction under memory pressure. Requires Java 22+
